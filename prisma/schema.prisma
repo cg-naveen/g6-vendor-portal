@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VENDOR
+}
+
+enum VendorType {
+  BUSINESS
+  INDIVIDUAL
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AccountType {
+  BUSINESS
+  FREELANCER
+  CONTRACT_FREELANCER
+}
+
+enum BillStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum InvoiceTemplate {
+  CLASSIC
+  MODERN
+  MINIMAL
+}
+
+enum SubmissionSource {
+  VENDOR
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vendor Vendor?
+}
+
+model Vendor {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        VendorType
+  status      VendorStatus @default(PENDING)
+  accountType AccountType?
+
+  // Common fields
+  vendorEmail String
+  phone       String
+  country     String
+  city        String
+  state       String
+
+  // Business fields
+  companyName        String?
+  companyRegNumber   String?
+  businessAddress    String?
+  contactPersonName  String?
+  contactPersonEmail String?
+  contactPersonPhone String?
+
+  // Individual fields
+  vendorName  String?
+  homeAddress String?
+
+  // Bank details
+  bankName      String
+  accountNumber String
+  ifsc          String?
+  swift         String
+  bankAddress   String
+
+  // Invoice customization (Freelancer / Contract Freelancer)
+  invoiceTemplate InvoiceTemplate @default(CLASSIC)
+  logoUrl         String?
+  watermarkText   String?
+  footerText      String?
+
+  rejectionReason String?
+  approvedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bills       Bill[]
+  submissions InvoiceSubmission[]
+
+  @@index([status])
+  @@index([accountType])
+}
+
+model Bill {
+  id          String     @id @default(cuid())
+  vendorId    String
+  vendor      Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  invoiceFile String
+  fileName    String
+  amount      Decimal    @db.Decimal(14, 2)
+  description String?
+  status      BillStatus @default(SUBMITTED)
+  submittedAt DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([vendorId])
+}
+
+model InvoiceSubmission {
+  id            String           @id @default(cuid())
+  vendorId      String
+  vendor        Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  invoiceNumber String           @unique
+  source        SubmissionSource
+  template      InvoiceTemplate
+  pdfPath       String?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  lineItems TaskLineItem[]
+
+  @@index([vendorId])
+}
+
+model TaskLineItem {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   InvoiceSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  date         DateTime
+  description  String
+  quantity     Decimal            @db.Decimal(10, 2)
+  rate         Decimal            @db.Decimal(14, 2)
+  amount       Decimal            @db.Decimal(14, 2)
+
+  @@index([submissionId])
+}
