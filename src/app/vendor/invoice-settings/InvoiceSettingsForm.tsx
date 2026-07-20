@@ -6,9 +6,10 @@ import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 import type { InvoiceTemplate } from "@prisma/client";
 
 const TEMPLATES: { id: InvoiceTemplate; name: string; description: string; accent: string }[] = [
-  { id: "CLASSIC", name: "Classic", description: "Traditional bordered layout with a bold dark header.", accent: "#1f2937" },
-  { id: "MODERN", name: "Modern", description: "Colorful banner header with card-style sections.", accent: "#4f46e5" },
-  { id: "MINIMAL", name: "Minimal", description: "Clean, whitespace-driven layout with light typography.", accent: "#18181b" },
+  { id: "CLASSIC", name: "Classic", description: "Black header bar with a boxed invoice number and payment details panel.", accent: "#18181b" },
+  { id: "MODERN", name: "Modern", description: "Navy corporate layout with Service Details and a dark payment info bar.", accent: "#0f172a" },
+  { id: "MINIMAL", name: "Minimal", description: "Plain, whitespace-driven layout with a simple line-item table.", accent: "#71717a" },
+  { id: "BOLD", name: "Bold", description: "Yellow-and-black banner with a numbered line-item table and signature line.", accent: "#f5c518" },
 ];
 
 const initialState: FormState = {};
@@ -36,7 +37,7 @@ export function InvoiceSettingsForm({
 
       <div>
         <span className="g6-label mb-3">Invoice Template</span>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TEMPLATES.map((t) => (
             <button
               key={t.id}

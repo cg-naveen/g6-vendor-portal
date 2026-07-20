@@ -52,12 +52,12 @@ export function Receipt({ data }: { data: ReceiptPdfData }) {
         </View>
 
         <View style={styles.sectionRow}>
-          <View>
+          <View style={{ width: "48%" }}>
             <Text style={styles.label}>Issued By</Text>
             <Text style={styles.value}>{data.billFromName}</Text>
             <Text style={styles.value}>{data.billFromAddress}</Text>
           </View>
-          <View style={{ textAlign: "right" }}>
+          <View style={{ width: "48%", textAlign: "right" }}>
             <Text style={styles.label}>Paid To</Text>
             <Text style={styles.value}>{data.payerName}</Text>
             <Text style={styles.value}>{data.payerAddress}</Text>

@@ -12,7 +12,7 @@ export type FormState = {
 };
 
 const settingsSchema = z.object({
-  invoiceTemplate: z.enum(["CLASSIC", "MODERN", "MINIMAL"]),
+  invoiceTemplate: z.enum(["CLASSIC", "MODERN", "MINIMAL", "BOLD"]),
   watermarkText: z.string().trim().max(60).optional(),
   footerText: z.string().trim().max(200).optional(),
 });
