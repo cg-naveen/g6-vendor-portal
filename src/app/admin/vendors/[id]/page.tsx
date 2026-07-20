@@ -3,14 +3,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { vendorDisplayName } from "@/lib/invoice";
 import { updateBillStatus } from "@/actions/bills";
+import { Badge, statusBadgeVariant } from "@/components/Badge";
 import { ApproveForm, RejectForm } from "./ApproveRejectForms";
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  SUBMITTED: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-700",
-};
+import { MarkBillPaidForm, MarkInvoicePaidForm } from "./MarkPaidForms";
+import { AutoBillingForm } from "./AutoBillingForm";
 
 export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,16 +24,16 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">{vendorDisplayName(vendor)}</h1>
-          <p className="text-sm text-zinc-500">{vendor.type === "BUSINESS" ? "Business Vendor" : "Individual Vendor"}</p>
+          <h1 className="g6-page-title">{vendorDisplayName(vendor)}</h1>
+          <p className="g6-page-subtitle mt-1">{vendor.type === "BUSINESS" ? "Business Vendor" : "Individual Vendor"}</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[vendor.status]}`}>{vendor.status}</span>
+        <Badge variant={statusBadgeVariant(vendor.status)}>{vendor.status}</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <section className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Vendor Details</h2>
+          <section className="g6-card p-6">
+            <h2 className="g6-section-label mb-4">Vendor Details</h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
               {vendor.type === "BUSINESS" ? (
                 <>
@@ -63,8 +59,8 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
             </dl>
           </section>
 
-          <section className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Bank Details</h2>
+          <section className="g6-card p-6">
+            <h2 className="g6-section-label mb-4">Bank Details</h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
               <Detail label="Bank Name" value={vendor.bankName} />
               <Detail label="Account Number" value={vendor.accountNumber} />
@@ -74,55 +70,83 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
             </dl>
           </section>
 
+          {vendor.accountType === "CONTRACT_FREELANCER" ? (
+            <AutoBillingForm
+              vendorId={vendor.id}
+              autoBillingEnabled={vendor.autoBillingEnabled}
+              recurringDescription={vendor.recurringDescription ?? ""}
+              recurringAmount={vendor.recurringAmount ? Number(vendor.recurringAmount) : null}
+              nextBillingDate={vendor.nextBillingDate ? vendor.nextBillingDate.toISOString() : null}
+              lastBilledAt={vendor.lastBilledAt ? vendor.lastBilledAt.toISOString() : null}
+            />
+          ) : null}
+
           {vendor.accountType === "BUSINESS" ? (
-            <section className="rounded-xl border border-zinc-200 bg-white p-6">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Submitted Bills</h2>
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase text-zinc-500">
+            <section className="g6-card p-6">
+              <h2 className="g6-section-label mb-4">Submitted Bills</h2>
+              <table className="g6-table">
+                <thead>
                   <tr>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Description</th>
-                    <th className="py-2">Amount</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2">File</th>
-                    <th className="py-2" />
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Payment</th>
+                    <th>File</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
                   {bills.map((bill) => (
-                    <tr key={bill.id} className="border-t border-zinc-100">
-                      <td className="py-2">{bill.submittedAt.toLocaleDateString()}</td>
-                      <td className="py-2">{bill.description || "—"}</td>
-                      <td className="py-2">{Number(bill.amount).toFixed(2)}</td>
-                      <td className="py-2">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_STYLES[bill.status]}`}>{bill.status}</span>
+                    <tr key={bill.id}>
+                      <td>{bill.submittedAt.toLocaleDateString()}</td>
+                      <td>{bill.description || "—"}</td>
+                      <td className="font-mono-g6">{Number(bill.amount).toFixed(2)}</td>
+                      <td>
+                        <Badge variant={statusBadgeVariant(bill.status)}>{bill.status}</Badge>
                       </td>
-                      <td className="py-2">
-                        <a href={`/api/bills/${bill.id}/file`} className="text-indigo-600 hover:underline">
+                      <td>
+                        <Badge variant={statusBadgeVariant(bill.paymentStatus)}>{bill.paymentStatus}</Badge>
+                      </td>
+                      <td>
+                        <a href={`/api/bills/${bill.id}/file`} className="text-[#9d84ff] hover:text-[#cabfff]">
                           {bill.fileName}
                         </a>
-                      </td>
-                      <td className="py-2">
-                        {bill.status === "SUBMITTED" ? (
-                          <div className="flex gap-2">
-                            <form action={updateBillStatus.bind(null, bill.id, "APPROVED")}>
-                              <button type="submit" className="text-xs text-emerald-600 hover:underline">
-                                Approve
-                              </button>
-                            </form>
-                            <form action={updateBillStatus.bind(null, bill.id, "REJECTED")}>
-                              <button type="submit" className="text-xs text-red-600 hover:underline">
-                                Reject
-                              </button>
-                            </form>
-                          </div>
+                        {bill.receiptPath ? (
+                          <>
+                            {" · "}
+                            <a href={`/api/bills/${bill.id}/receipt`} className="text-[#9d84ff] hover:text-[#cabfff]">
+                              Receipt
+                            </a>
+                          </>
                         ) : null}
+                      </td>
+                      <td>
+                        <div className="flex flex-col items-start gap-1.5">
+                          {bill.status === "SUBMITTED" ? (
+                            <div className="flex gap-3">
+                              <form action={updateBillStatus.bind(null, bill.id, "APPROVED")}>
+                                <button type="submit" className="text-xs text-[#5ee8c0] hover:underline">
+                                  Approve
+                                </button>
+                              </form>
+                              <form action={updateBillStatus.bind(null, bill.id, "REJECTED")}>
+                                <button type="submit" className="text-xs text-[#ff9494] hover:underline">
+                                  Reject
+                                </button>
+                              </form>
+                            </div>
+                          ) : null}
+                          {bill.status === "APPROVED" && bill.paymentStatus === "UNPAID" ? (
+                            <MarkBillPaidForm billId={bill.id} vendorId={vendor.id} defaultAmount={Number(bill.amount)} />
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
                   {bills.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-zinc-400">
+                      <td colSpan={7} className="py-6 text-center text-[#5c5770]">
                         No bills submitted yet.
                       </td>
                     </tr>
@@ -133,53 +157,73 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           ) : null}
 
           {vendor.accountType === "FREELANCER" || vendor.accountType === "CONTRACT_FREELANCER" ? (
-            <section className="rounded-xl border border-zinc-200 bg-white p-6">
+            <section className="g6-card p-6">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Invoices</h2>
+                <h2 className="g6-section-label">Invoices</h2>
                 {vendor.accountType === "CONTRACT_FREELANCER" ? (
-                  <Link href={`/admin/vendors/${vendor.id}/deliverables/new`} className="text-sm text-indigo-600 hover:underline">
+                  <Link href={`/admin/vendors/${vendor.id}/deliverables/new`} className="text-sm text-[#9d84ff] hover:text-[#cabfff]">
                     + Add Deliverable Entry
                   </Link>
                 ) : null}
               </div>
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase text-zinc-500">
+              <table className="g6-table">
+                <thead>
                   <tr>
-                    <th className="py-2">Invoice #</th>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Entered By</th>
-                    <th className="py-2">Total</th>
-                    <th className="py-2">PDF</th>
-                    <th className="py-2" />
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th>Entered By</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>PDF</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
                   {submissions.map((s) => {
                     const total = s.lineItems.reduce((sum, li) => sum + Number(li.amount), 0);
                     return (
-                      <tr key={s.id} className="border-t border-zinc-100">
-                        <td className="py-2 font-medium">{s.invoiceNumber}</td>
-                        <td className="py-2">{s.createdAt.toLocaleDateString()}</td>
-                        <td className="py-2">{s.source === "ADMIN" ? "G6 Admin" : "Vendor"}</td>
-                        <td className="py-2">{total.toFixed(2)}</td>
-                        <td className="py-2">
-                          <a href={`/api/invoices/${s.id}/pdf`} target="_blank" className="text-indigo-600 hover:underline">
+                      <tr key={s.id}>
+                        <td className="font-mono-g6 font-medium">
+                          {s.invoiceNumber}
+                          {s.isRecurring ? <span className="ml-2 text-[10px] text-[#8781a0]">(auto)</span> : null}
+                        </td>
+                        <td>{s.createdAt.toLocaleDateString()}</td>
+                        <td>{s.source === "ADMIN" ? "G6 Admin" : "Vendor"}</td>
+                        <td className="font-mono-g6">{total.toFixed(2)}</td>
+                        <td>
+                          <Badge variant={statusBadgeVariant(s.paymentStatus)}>{s.paymentStatus}</Badge>
+                        </td>
+                        <td>
+                          <a href={`/api/invoices/${s.id}/pdf`} target="_blank" className="text-[#9d84ff] hover:text-[#cabfff]">
                             View
                           </a>
-                        </td>
-                        <td className="py-2">
-                          {vendor.accountType === "CONTRACT_FREELANCER" ? (
-                            <Link href={`/admin/vendors/${vendor.id}/deliverables/${s.id}/edit`} className="text-xs text-indigo-600 hover:underline">
-                              Edit
-                            </Link>
+                          {s.receiptPath ? (
+                            <>
+                              {" · "}
+                              <a href={`/api/invoices/${s.id}/receipt`} className="text-[#9d84ff] hover:text-[#cabfff]">
+                                Receipt
+                              </a>
+                            </>
                           ) : null}
+                        </td>
+                        <td>
+                          <div className="flex flex-col items-start gap-1.5">
+                            {vendor.accountType === "CONTRACT_FREELANCER" ? (
+                              <Link href={`/admin/vendors/${vendor.id}/deliverables/${s.id}/edit`} className="text-xs text-[#9d84ff] hover:underline">
+                                Edit
+                              </Link>
+                            ) : null}
+                            {s.paymentStatus === "UNPAID" ? (
+                              <MarkInvoicePaidForm submissionId={s.id} vendorId={vendor.id} defaultAmount={total} />
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                   {submissions.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-zinc-400">
+                      <td colSpan={7} className="py-6 text-center text-[#5c5770]">
                         No invoices yet.
                       </td>
                     </tr>
@@ -194,7 +238,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           <ApproveForm vendorId={vendor.id} currentAccountType={vendor.accountType} />
           <RejectForm vendorId={vendor.id} />
           {vendor.status === "REJECTED" && vendor.rejectionReason ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+            <div className="g6-alert g6-alert-error">
               <strong>Last rejection reason:</strong> {vendor.rejectionReason}
             </div>
           ) : null}
@@ -207,8 +251,8 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
 function Detail({ label, value, full }: { label: string; value?: string | null; full?: boolean }) {
   return (
     <div className={full ? "sm:col-span-2" : undefined}>
-      <dt className="text-xs uppercase text-zinc-400">{label}</dt>
-      <dd className="text-zinc-800">{value || "—"}</dd>
+      <dt className="text-xs uppercase text-[#5c5770]">{label}</dt>
+      <dd className="text-[#dcd8ea]">{value || "—"}</dd>
     </div>
   );
 }

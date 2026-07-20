@@ -20,5 +20,9 @@ export async function requireAdmin() {
   if (!session || session.role !== "ADMIN") {
     redirect("/login");
   }
-  return session;
+  const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!user) {
+    redirect("/login");
+  }
+  return user;
 }

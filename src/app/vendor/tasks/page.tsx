@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireVendor } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { Badge, statusBadgeVariant } from "@/components/Badge";
 
 export default async function TasksPage() {
   const vendor = await requireVendor();
@@ -18,43 +19,55 @@ export default async function TasksPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-900">Task Entries</h1>
-        <Link href="/vendor/tasks/new" className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        <h1 className="g6-page-title">Task Entries</h1>
+        <Link href="/vendor/tasks/new" className="g6-btn g6-btn-primary">
           Submit New Tasks
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+      <div className="g6-table-wrap">
+        <table className="g6-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3">Invoice #</th>
-              <th className="px-4 py-3">Submitted</th>
-              <th className="px-4 py-3">Rows</th>
-              <th className="px-4 py-3">Total</th>
-              <th className="px-4 py-3">Invoice PDF</th>
+              <th>Invoice #</th>
+              <th>Submitted</th>
+              <th>Rows</th>
+              <th>Total</th>
+              <th>Payment</th>
+              <th>Invoice PDF</th>
             </tr>
           </thead>
           <tbody>
             {submissions.map((s) => {
               const total = s.lineItems.reduce((sum, li) => sum + Number(li.amount), 0);
               return (
-                <tr key={s.id} className="border-t border-zinc-100">
-                  <td className="px-4 py-3 font-medium">{s.invoiceNumber}</td>
-                  <td className="px-4 py-3">{s.createdAt.toLocaleDateString()}</td>
-                  <td className="px-4 py-3">{s.lineItems.length}</td>
-                  <td className="px-4 py-3">{total.toFixed(2)}</td>
-                  <td className="px-4 py-3">
-                    <a href={`/api/invoices/${s.id}/pdf`} target="_blank" className="text-indigo-600 hover:underline">
+                <tr key={s.id}>
+                  <td className="font-mono-g6 font-medium">{s.invoiceNumber}</td>
+                  <td>{s.createdAt.toLocaleDateString()}</td>
+                  <td>{s.lineItems.length}</td>
+                  <td className="font-mono-g6">{total.toFixed(2)}</td>
+                  <td>
+                    <Badge variant={statusBadgeVariant(s.paymentStatus)}>{s.paymentStatus}</Badge>
+                  </td>
+                  <td>
+                    <a href={`/api/invoices/${s.id}/pdf`} target="_blank" className="text-[#9d84ff] hover:text-[#cabfff]">
                       View PDF
                     </a>
+                    {s.receiptPath ? (
+                      <>
+                        {" · "}
+                        <a href={`/api/invoices/${s.id}/receipt`} className="text-[#9d84ff] hover:text-[#cabfff]">
+                          Receipt
+                        </a>
+                      </>
+                    ) : null}
                   </td>
                 </tr>
               );
             })}
             {submissions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={6} className="py-8 text-center text-[#5c5770]">
                   No task entries submitted yet.
                 </td>
               </tr>

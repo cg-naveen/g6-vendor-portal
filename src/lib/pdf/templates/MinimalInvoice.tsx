@@ -53,6 +53,7 @@ export function MinimalInvoice({ data }: { data: InvoicePdfData }) {
           <View style={{ textAlign: "right" }}>
             <Text style={styles.label}>Bill To</Text>
             <Text style={styles.value}>{data.billToName}</Text>
+            {data.billToAddress ? <Text style={styles.value}>{data.billToAddress}</Text> : null}
           </View>
         </View>
 

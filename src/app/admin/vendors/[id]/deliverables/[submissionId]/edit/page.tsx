@@ -27,7 +27,7 @@ export default async function EditDeliverablePage({ params }: { params: Promise<
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-zinc-900">
+      <h1 className="g6-page-title mb-6">
         Edit Deliverable Entry — {vendorDisplayName(vendor)} ({submission.invoiceNumber})
       </h1>
       <EditDeliverableForm vendorId={vendor.id} submissionId={submission.id} initialRows={initialRows} initialNotes={submission.notes ?? ""} />

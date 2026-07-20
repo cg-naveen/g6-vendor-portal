@@ -13,7 +13,7 @@ export default async function NewDeliverablePage({ params }: { params: Promise<{
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-zinc-900">Add Deliverable Entry — {vendorDisplayName(vendor)}</h1>
+      <h1 className="g6-page-title mb-6">Add Deliverable Entry — {vendorDisplayName(vendor)}</h1>
       <NewDeliverableForm vendorId={vendor.id} />
     </div>
   );

@@ -13,10 +13,16 @@ Vendor registration, approval, billing, and invoicing portal for G6 Labs Asia.
 
 - Public vendor registration for **Business** or **Individual** vendors, capturing company/contact details and bank details. New accounts start as `PENDING`.
 - Admin approval workflow: admin reviews pending vendors and assigns an account type on approval — **Business**, **Freelancer**, or **Contract Freelancer**.
+- Admin can also manually create a vendor of any account type (`/admin/vendors/new`), auto-approved with an admin-set initial password — useful for onboarding without waiting on self-registration.
 - **Business** vendors upload invoices as bills (file + amount + description); admin can approve/reject each bill.
 - **Freelancer** vendors submit multi-row task/deliverable entries; the portal auto-generates a PDF invoice.
 - **Contract Freelancer** deliverables are entered by admin (one-time entry, editable); the portal auto-generates/regenerates the PDF invoice on save.
+- **Contract Freelancer auto-billing**: admin sets a recurring description/amount and next billing date per vendor. A protected endpoint (`POST /api/cron/generate-recurring-invoices`, header `x-cron-secret: $CRON_SECRET`) generates invoices for everyone due and advances their next billing date by a month — point any scheduler (cron, Vercel Cron, GitHub Actions) at it. Admin can also trigger it on demand from the dashboard ("Run Billing Now").
+- Admin-configurable billing info (`/admin/settings`) — company name/address/tax ID/contact — used as the "Bill To" block on generated invoices.
+- Payment tracking: admin marks a bill or invoice as paid (amount paid + transaction fee), which generates a downloadable PDF receipt (amount paid, fee, net amount).
 - Freelancer/Contract Freelancer vendors can pick from 3 invoice templates (Classic, Modern, Minimal) and customize logo, watermark text, and footer text.
+- Self-service password recovery (`/forgot-password`) and profile management (contact/bank details, password change) for both vendors and admin.
+- Dark, glass-morphic UI matching the G6 Labs Asia design system (Inter + JetBrains Mono, purple accent, sidebar navigation).
 
 ## Local Development
 
@@ -84,10 +90,15 @@ Uploaded bills, vendor logos, and generated invoice PDFs are stored on local dis
 
 ## Data Model
 
-See `prisma/schema.prisma`. Key models: `User` (login/role), `Vendor` (profile, bank details, status, account type, invoice branding), `Bill` (Business invoice uploads), `InvoiceSubmission` + `TaskLineItem` (Freelancer/Contract Freelancer auto-generated invoices).
+See `prisma/schema.prisma`. Key models: `User` (login/role), `Vendor` (profile, bank details, status, account type, invoice branding, recurring billing config), `Bill` (Business invoice uploads + payment/receipt fields), `InvoiceSubmission` + `TaskLineItem` (Freelancer/Contract Freelancer invoices + payment/receipt fields), `OrgSettings` (singleton billing info), `PasswordResetToken`.
+
+## Password Recovery — Important Caveat
+
+There is no SMTP/email provider wired up. `/forgot-password` generates a one-time reset link and displays it **directly on the page** instead of emailing it (link expires in 1 hour, single-use). This is convenient for internal/demo use but is **not production-secure** — anyone who can see the requester's screen sees the link. For a real production rollout, wire up an email provider in `src/actions/passwordReset.ts` and stop returning the link in the response.
 
 ## Notes / Follow-ups for a production rollout
 
-- No email/SMTP is wired up — vendors don't get notified when approved/rejected; add a mail provider if needed.
+- No email/SMTP is wired up — vendors don't get notified when approved/rejected, and password reset links are shown on-screen rather than emailed (see above).
 - Admin accounts are seeded only (no self-registration or admin invite flow).
 - Currency is unit-less (plain numeric formatting); add a currency field if G6 needs multi-currency support.
+- `CRON_SECRET` in `.env` protects the recurring-billing endpoint — set a strong value and configure your host's scheduler (Vercel Cron, a server crontab, GitHub Actions, etc.) to `POST /api/cron/generate-recurring-invoices` with header `x-cron-secret: <value>` on whatever cadence you want it checked (daily is reasonable since it only bills vendors whose due date has arrived).

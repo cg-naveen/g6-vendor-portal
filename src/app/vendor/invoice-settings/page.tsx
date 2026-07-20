@@ -10,8 +10,8 @@ export default async function InvoiceSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-xl font-semibold text-zinc-900">Invoice Settings</h1>
-      <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <h1 className="g6-page-title mb-6">Invoice Settings</h1>
+      <div className="g6-card p-6">
         <InvoiceSettingsForm
           currentTemplate={vendor.invoiceTemplate}
           currentWatermark={vendor.watermarkText ?? ""}

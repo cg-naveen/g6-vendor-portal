@@ -48,6 +48,15 @@ export const registrationSchema = z.discriminatedUnion("type", [
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 
+const accountTypeField = z.object({
+  accountType: z.enum(["BUSINESS", "FREELANCER", "CONTRACT_FREELANCER"]),
+});
+
+export const adminCreateVendorSchema = z.discriminatedUnion("type", [
+  businessRegistrationSchema.merge(accountTypeField),
+  individualRegistrationSchema.merge(accountTypeField),
+]);
+
 export const loginSchema = z.object({
   email: req("Email").email("Enter a valid email"),
   password: req("Password"),

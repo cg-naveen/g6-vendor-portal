@@ -14,6 +14,7 @@ export type InvoicePdfData = {
   vendorEmail: string;
   vendorPhone: string;
   billToName: string;
+  billToAddress?: string;
   lineItems: InvoiceLineItemView[];
   total: string;
   logoDataUri?: string | null;

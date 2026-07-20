@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireVendor } from "@/lib/currentUser";
-import { prisma } from "@/lib/prisma";
 import { vendorDisplayName } from "@/lib/invoice";
+import { getVendorFinancialSummary, formatMoney } from "@/lib/stats";
+import { StatCard } from "@/components/StatCard";
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   BUSINESS: "Business",
@@ -14,9 +15,9 @@ export default async function VendorDashboard() {
 
   if (vendor.status === "PENDING") {
     return (
-      <div className="mx-auto max-w-xl rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-        <h1 className="text-lg font-semibold text-amber-800">Registration Pending Review</h1>
-        <p className="mt-2 text-sm text-amber-700">
+      <div className="mx-auto max-w-xl g6-card p-8 text-center">
+        <h1 className="g6-page-title">Registration Pending Review</h1>
+        <p className="mt-3 text-sm text-[#a09bb5]">
           Thanks for registering, {vendorDisplayName(vendor)}. Our admin team is reviewing your application. You&apos;ll be able
           to submit bills or invoices once your account is approved.
         </p>
@@ -26,56 +27,57 @@ export default async function VendorDashboard() {
 
   if (vendor.status === "REJECTED") {
     return (
-      <div className="mx-auto max-w-xl rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-        <h1 className="text-lg font-semibold text-red-800">Registration Rejected</h1>
-        <p className="mt-2 text-sm text-red-700">
+      <div className="mx-auto max-w-xl g6-card p-8 text-center">
+        <h1 className="g6-page-title text-[#ff9494]">Registration Rejected</h1>
+        <p className="mt-3 text-sm text-[#a09bb5]">
           {vendor.rejectionReason || "Your registration was not approved. Please contact G6 Labs Asia for more details."}
         </p>
       </div>
     );
   }
 
-  const [billCount, submissionCount] = await Promise.all([
-    vendor.accountType === "BUSINESS" ? prisma.bill.count({ where: { vendorId: vendor.id } }) : Promise.resolve(0),
-    vendor.accountType !== "BUSINESS" ? prisma.invoiceSubmission.count({ where: { vendorId: vendor.id } }) : Promise.resolve(0),
-  ]);
+  const summary = await getVendorFinancialSummary(vendor.id, vendor.accountType);
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6">
-        <h1 className="text-lg font-semibold text-emerald-800">Welcome, {vendorDisplayName(vendor)}</h1>
-        <p className="mt-1 text-sm text-emerald-700">
-          Account type: <span className="font-semibold">{ACCOUNT_TYPE_LABEL[vendor.accountType ?? ""]}</span>
+      <div>
+        <h1 className="g6-page-title">Welcome back, {vendorDisplayName(vendor)}</h1>
+        <p className="g6-page-subtitle mt-1">
+          Account type: <span className="font-semibold text-[#cabfff]">{ACCOUNT_TYPE_LABEL[vendor.accountType ?? ""]}</span>
         </p>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Outstanding" value={formatMoney(summary.outstanding)} hint={`${summary.outstandingCount} pending`} hintColor="pending" />
+        <StatCard label="Paid" value={formatMoney(summary.paid)} hint={`${summary.paidCount} settled`} hintColor="paid" />
+        <StatCard label="Total on file" value={String(summary.outstandingCount + summary.paidCount)} hint="invoices / bills" hintColor="muted" />
+      </div>
+
       {vendor.accountType === "BUSINESS" ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="font-semibold text-zinc-900">Bills</h2>
-          <p className="mt-1 text-sm text-zinc-500">You have submitted {billCount} bill(s).</p>
-          <Link href="/vendor/bills/new" className="mt-4 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        <div className="g6-card p-6">
+          <h2 className="text-[15px] font-semibold text-[#ece9f5]">Bills</h2>
+          <p className="mt-1 text-sm text-[#8781a0]">Upload a new invoice for G6 Labs Asia to review and pay.</p>
+          <Link href="/vendor/bills/new" className="g6-btn g6-btn-primary mt-4">
             Upload New Bill
           </Link>
         </div>
       ) : null}
 
       {vendor.accountType === "FREELANCER" ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="font-semibold text-zinc-900">Task Entries</h2>
-          <p className="mt-1 text-sm text-zinc-500">You have {submissionCount} submitted invoice(s).</p>
-          <Link href="/vendor/tasks/new" className="mt-4 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        <div className="g6-card p-6">
+          <h2 className="text-[15px] font-semibold text-[#ece9f5]">Task Entries</h2>
+          <p className="mt-1 text-sm text-[#8781a0]">Log delivered work and generate your invoice automatically.</p>
+          <Link href="/vendor/tasks/new" className="g6-btn g6-btn-primary mt-4">
             Submit Delivered Tasks
           </Link>
         </div>
       ) : null}
 
       {vendor.accountType === "CONTRACT_FREELANCER" ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="font-semibold text-zinc-900">Invoices</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            G6 Labs Asia admin records your deliverables. You have {submissionCount} invoice(s) on file.
-          </p>
-          <Link href="/vendor/invoices" className="mt-4 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        <div className="g6-card p-6">
+          <h2 className="text-[15px] font-semibold text-[#ece9f5]">Invoices</h2>
+          <p className="mt-1 text-sm text-[#8781a0]">G6 Labs Asia admin records your deliverables and billing schedule.</p>
+          <Link href="/vendor/invoices" className="g6-btn g6-btn-primary mt-4">
             View Invoices
           </Link>
         </div>

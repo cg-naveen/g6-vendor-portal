@@ -12,15 +12,13 @@ type FormFieldProps = {
 };
 
 export function FormField({ label, name, type = "text", required, error, defaultValue, placeholder, as = "input", step, min }: FormFieldProps) {
-  const baseClass =
-    "w-full rounded-md border px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 " +
-    (error ? "border-red-400" : "border-zinc-300");
+  const baseClass = `g6-input ${error ? "g6-input-error" : ""}`;
 
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-zinc-700">
+      <span className="g6-label">
         {label}
-        {required ? <span className="text-red-500"> *</span> : null}
+        {required ? <span className="text-[#ff9494]"> *</span> : null}
       </span>
       {as === "textarea" ? (
         <textarea name={name} required={required} defaultValue={defaultValue} placeholder={placeholder} rows={3} className={baseClass} />
@@ -36,7 +34,7 @@ export function FormField({ label, name, type = "text", required, error, default
           className={baseClass}
         />
       )}
-      {error ? <span className="mt-1 block text-xs text-red-500">{error}</span> : null}
+      {error ? <span className="g6-help-error">{error}</span> : null}
     </label>
   );
 }

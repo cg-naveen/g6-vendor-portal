@@ -2,12 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireVendor } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-
-const STATUS_STYLES: Record<string, string> = {
-  SUBMITTED: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-700",
-};
+import { Badge, statusBadgeVariant } from "@/components/Badge";
 
 export default async function BillsPage() {
   const vendor = await requireVendor();
@@ -20,42 +15,54 @@ export default async function BillsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-900">Your Bills</h1>
-        <Link href="/vendor/bills/new" className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        <h1 className="g6-page-title">Your Bills</h1>
+        <Link href="/vendor/bills/new" className="g6-btn g6-btn-primary">
           Upload New Bill
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+      <div className="g6-table-wrap">
+        <table className="g6-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3">Submitted</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">File</th>
+              <th>Submitted</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>File</th>
             </tr>
           </thead>
           <tbody>
             {bills.map((bill) => (
-              <tr key={bill.id} className="border-t border-zinc-100">
-                <td className="px-4 py-3">{bill.submittedAt.toLocaleDateString()}</td>
-                <td className="px-4 py-3">{bill.description || "—"}</td>
-                <td className="px-4 py-3">{Number(bill.amount).toFixed(2)}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_STYLES[bill.status]}`}>{bill.status}</span>
+              <tr key={bill.id}>
+                <td>{bill.submittedAt.toLocaleDateString()}</td>
+                <td>{bill.description || "—"}</td>
+                <td className="font-mono-g6">{Number(bill.amount).toFixed(2)}</td>
+                <td>
+                  <Badge variant={statusBadgeVariant(bill.status)}>{bill.status}</Badge>
                 </td>
-                <td className="px-4 py-3">
-                  <a href={`/api/bills/${bill.id}/file`} className="text-indigo-600 hover:underline">
+                <td>
+                  <Badge variant={statusBadgeVariant(bill.paymentStatus)}>{bill.paymentStatus}</Badge>
+                </td>
+                <td>
+                  <a href={`/api/bills/${bill.id}/file`} className="text-[#9d84ff] hover:text-[#cabfff]">
                     {bill.fileName}
                   </a>
+                  {bill.receiptPath ? (
+                    <>
+                      {" · "}
+                      <a href={`/api/bills/${bill.id}/receipt`} className="text-[#9d84ff] hover:text-[#cabfff]">
+                        Receipt
+                      </a>
+                    </>
+                  ) : null}
                 </td>
               </tr>
             ))}
             {bills.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={6} className="py-8 text-center text-[#5c5770]">
                   No bills submitted yet.
                 </td>
               </tr>

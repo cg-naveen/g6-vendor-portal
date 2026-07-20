@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { renderInvoicePdf } from "@/lib/pdf/render";
 import { savePdf, resolveUploadPath } from "@/lib/storage";
 import { generateInvoiceNumber } from "@/lib/invoiceNumber";
+import { getOrgSettings } from "@/lib/orgSettings";
 import type { InvoicePdfData, InvoiceLineItemView } from "@/lib/pdf/types";
 import type { Vendor } from "@prisma/client";
 
@@ -22,7 +23,7 @@ export type LineItemInput = {
   rate: number;
 };
 
-async function logoToDataUri(vendor: Vendor): Promise<string | null> {
+export async function logoToDataUri(vendor: Vendor): Promise<string | null> {
   if (!vendor.logoUrl) return null;
   try {
     const filePath = resolveUploadPath(vendor.logoUrl);
@@ -52,8 +53,9 @@ export async function createInvoiceSubmission(params: {
   source: "VENDOR" | "ADMIN";
   notes?: string | null;
   lineItems: LineItemInput[];
+  isRecurring?: boolean;
 }) {
-  const { vendor, source, notes, lineItems } = params;
+  const { vendor, source, notes, lineItems, isRecurring } = params;
 
   const total = lineItems.reduce((sum, li) => sum + li.quantity * li.rate, 0);
   const invoiceNumber = generateInvoiceNumber();
@@ -65,6 +67,7 @@ export async function createInvoiceSubmission(params: {
       source,
       template: vendor.invoiceTemplate,
       notes: notes || null,
+      isRecurring: isRecurring ?? false,
       lineItems: {
         create: lineItems.map((li) => ({
           date: li.date,
@@ -94,6 +97,7 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
 
   const vendor = submission.vendor;
   const total = submission.lineItems.reduce((sum, li) => sum + Number(li.amount), 0);
+  const orgSettings = await getOrgSettings();
 
   const lineItemsView: InvoiceLineItemView[] = submission.lineItems.map((li) => ({
     date: dateFormat.format(li.date),
@@ -110,7 +114,8 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
     vendorAddress: vendorAddress(vendor),
     vendorEmail: vendor.vendorEmail,
     vendorPhone: vendor.phone,
-    billToName: "G6 Labs Asia",
+    billToName: orgSettings.companyName,
+    billToAddress: orgSettings.address ?? undefined,
     lineItems: lineItemsView,
     total: fmt(total),
     logoDataUri: await logoToDataUri(vendor),

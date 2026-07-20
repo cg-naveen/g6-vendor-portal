@@ -10,7 +10,7 @@ export default async function NewTaskEntryPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-zinc-900">Submit Delivered Tasks</h1>
+      <h1 className="g6-page-title mb-6">Submit Delivered Tasks</h1>
       <TaskEntryForm />
     </div>
   );

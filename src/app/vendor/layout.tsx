@@ -1,27 +1,29 @@
 import { requireVendor } from "@/lib/currentUser";
-import { NavBar } from "@/components/NavBar";
+import { AppShell, type NavItem } from "@/components/AppShell";
+import { vendorDisplayName } from "@/lib/invoice";
+import { IconDashboard, IconUpload, IconList, IconDocument, IconSettings, IconUser } from "@/components/icons";
 
 export default async function VendorLayout({ children }: { children: React.ReactNode }) {
   const vendor = await requireVendor();
 
-  const links = [{ href: "/vendor", label: "Dashboard" }];
+  const links: NavItem[] = [{ href: "/vendor", label: "Dashboard", icon: <IconDashboard className="shrink-0" />, exact: true }];
   if (vendor.status === "APPROVED") {
     if (vendor.accountType === "BUSINESS") {
-      links.push({ href: "/vendor/bills", label: "Bills" });
+      links.push({ href: "/vendor/bills", label: "Bills", icon: <IconUpload className="shrink-0" /> });
     }
     if (vendor.accountType === "FREELANCER") {
-      links.push({ href: "/vendor/tasks", label: "Task Entries" });
+      links.push({ href: "/vendor/tasks", label: "Task Entries", icon: <IconList className="shrink-0" /> });
     }
     if (vendor.accountType === "FREELANCER" || vendor.accountType === "CONTRACT_FREELANCER") {
-      links.push({ href: "/vendor/invoices", label: "Invoices" });
-      links.push({ href: "/vendor/invoice-settings", label: "Invoice Settings" });
+      links.push({ href: "/vendor/invoices", label: "Invoices", icon: <IconDocument className="shrink-0" /> });
+      links.push({ href: "/vendor/invoice-settings", label: "Invoice Settings", icon: <IconSettings className="shrink-0" /> });
     }
   }
+  links.push({ href: "/vendor/profile", label: "Profile", icon: <IconUser className="shrink-0" /> });
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50">
-      <NavBar title="G6 Vendor Portal" links={links} />
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</div>
-    </div>
+    <AppShell portalLabel="Vendor Portal" navItems={links} userLabel={vendorDisplayName(vendor)} userSubLabel={vendor.vendorEmail}>
+      {children}
+    </AppShell>
   );
 }

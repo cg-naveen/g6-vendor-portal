@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateInvoiceSettings, type FormState } from "@/actions/invoiceSettings";
+import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 import type { InvoiceTemplate } from "@prisma/client";
 
 const TEMPLATES: { id: InvoiceTemplate; name: string; description: string; accent: string }[] = [
@@ -30,73 +31,62 @@ export function InvoiceSettingsForm({
     <form action={formAction} className="space-y-8">
       <input type="hidden" name="invoiceTemplate" value={template} />
 
-      {state.error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Settings saved.</p> : null}
+      {state.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
+      {state.success ? <SuccessBanner>Settings saved.</SuccessBanner> : null}
 
       <div>
-        <span className="mb-3 block text-sm font-medium text-zinc-700">Invoice Template</span>
+        <span className="g6-label mb-3">Invoice Template</span>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {TEMPLATES.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTemplate(t.id)}
-              className={`rounded-xl border p-4 text-left ${
-                template === t.id ? "border-indigo-500 ring-2 ring-indigo-200" : "border-zinc-200"
+              className={`rounded-xl border p-4 text-left transition ${
+                template === t.id ? "border-[#7c5cff] ring-2 ring-[#7c5cff]/30" : "border-white/10 hover:border-white/20"
               }`}
             >
               <div className="mb-3 h-16 rounded-md" style={{ backgroundColor: t.accent }} />
-              <p className="text-sm font-semibold text-zinc-900">{t.name}</p>
-              <p className="mt-1 text-xs text-zinc-500">{t.description}</p>
+              <p className="text-sm font-semibold text-[#ece9f5]">{t.name}</p>
+              <p className="mt-1 text-xs text-[#8781a0]">{t.description}</p>
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <span className="mb-1 block text-sm font-medium text-zinc-700">Logo {hasLogo ? "(currently set)" : ""}</span>
+        <span className="g6-label">Logo {hasLogo ? "(currently set)" : ""}</span>
         {hasLogo ? (
           // eslint-disable-next-line @next/next/no-img-element -- dynamic API-served image, next/image not needed here
-          <img src="/api/vendor/logo" alt="Current logo" className="mb-2 h-16 rounded border border-zinc-200 bg-white object-contain p-1" />
+          <img src="/api/vendor/logo" alt="Current logo" className="mb-2 h-16 rounded border border-white/10 bg-white/5 object-contain p-1" />
         ) : null}
         <input
           name="logo"
           type="file"
           accept="image/png,image/jpeg,image/svg+xml"
-          className="block w-full rounded-md border border-zinc-300 text-sm text-zinc-700 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+          className="block w-full rounded-[11px] border border-white/10 bg-black/30 text-sm text-[#a09bb5] file:mr-4 file:cursor-pointer file:rounded-[9px] file:border-0 file:bg-[#7c5cff]/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#cabfff] hover:file:bg-[#7c5cff]/30"
         />
-        <p className="mt-1 text-xs text-zinc-400">Shown at the top of your generated invoices.</p>
+        <p className="mt-1 text-xs text-[#5c5770]">Shown at the top of your generated invoices.</p>
       </div>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-zinc-700">Watermark Text</span>
-        <input
-          name="watermarkText"
-          type="text"
-          defaultValue={currentWatermark}
-          placeholder="e.g. ORIGINAL"
-          maxLength={60}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-        />
+        <span className="g6-label">Watermark Text</span>
+        <input name="watermarkText" type="text" defaultValue={currentWatermark} placeholder="e.g. ORIGINAL" maxLength={60} className="g6-input" />
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-zinc-700">Footer Text</span>
+        <span className="g6-label">Footer Text</span>
         <textarea
           name="footerText"
           defaultValue={currentFooter}
           rows={2}
           maxLength={200}
           placeholder="e.g. Thank you for your business. Payment due within 30 days."
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="g6-input"
         />
       </label>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
-      >
+      <button type="submit" disabled={pending} className="g6-btn g6-btn-primary">
         {pending ? "Saving..." : "Save Settings"}
       </button>
     </form>

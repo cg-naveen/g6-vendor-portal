@@ -46,6 +46,11 @@ enum SubmissionSource {
   ADMIN
 }
 
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -54,7 +59,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  vendor Vendor?
+  vendor      Vendor?
+  resetTokens PasswordResetToken[]
 }
 
 model Vendor {
@@ -98,8 +104,16 @@ model Vendor {
   watermarkText   String?
   footerText      String?
 
+  // Recurring auto-billing (Contract Freelancer)
+  autoBillingEnabled   Boolean   @default(false)
+  recurringDescription String?
+  recurringAmount      Decimal?  @db.Decimal(14, 2)
+  nextBillingDate      DateTime?
+  lastBilledAt         DateTime?
+
   rejectionReason String?
   approvedAt      DateTime?
+  createdByAdmin  Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -123,6 +137,13 @@ model Bill {
   submittedAt DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  paymentStatus  PaymentStatus @default(UNPAID)
+  amountPaid     Decimal?      @db.Decimal(14, 2)
+  transactionFee Decimal?      @db.Decimal(14, 2)
+  paidAt         DateTime?
+  receiptNumber  String?       @unique
+  receiptPath    String?
+
   @@index([vendorId])
 }
 
@@ -135,8 +156,16 @@ model InvoiceSubmission {
   template      InvoiceTemplate
   pdfPath       String?
   notes         String?
+  isRecurring   Boolean          @default(false)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  paymentStatus  PaymentStatus @default(UNPAID)
+  amountPaid     Decimal?      @db.Decimal(14, 2)
+  transactionFee Decimal?      @db.Decimal(14, 2)
+  paidAt         DateTime?
+  receiptNumber  String?       @unique
+  receiptPath    String?
 
   lineItems TaskLineItem[]
 
@@ -144,14 +173,36 @@ model InvoiceSubmission {
 }
 
 model TaskLineItem {
-  id           String             @id @default(cuid())
+  id           String            @id @default(cuid())
   submissionId String
-  submission   InvoiceSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submission   InvoiceSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   date         DateTime
   description  String
-  quantity     Decimal            @db.Decimal(10, 2)
-  rate         Decimal            @db.Decimal(14, 2)
-  amount       Decimal            @db.Decimal(14, 2)
+  quantity     Decimal           @db.Decimal(10, 2)
+  rate         Decimal           @db.Decimal(14, 2)
+  amount       Decimal           @db.Decimal(14, 2)
 
   @@index([submissionId])
+}
+
+model OrgSettings {
+  id          String   @id @default("singleton")
+  companyName String   @default("G6 Labs Asia")
+  address     String?
+  taxId       String?
+  email       String?
+  phone       String?
+  updatedAt   DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
