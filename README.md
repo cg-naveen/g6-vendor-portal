@@ -20,15 +20,39 @@ Vendor registration, approval, billing, and invoicing portal for G6 Labs Asia.
 
 ## Local Development
 
-### 1. Start PostgreSQL
+### 1. Get a PostgreSQL database running
 
-Using Docker Compose:
+Docker is not required — any reachable Postgres instance works. Pick one:
+
+**Option A: Docker Compose** (if you have Docker installed)
 
 ```bash
 docker compose up -d
 ```
 
-Or point `DATABASE_URL` in `.env` at any existing Postgres instance.
+**Option B: Native PostgreSQL install** (no Docker)
+
+macOS:
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createuser -s g6vendor -P          # set a password, e.g. g6vendor
+createdb g6_vendor_portal -O g6vendor
+```
+
+Ubuntu/Debian:
+
+```bash
+sudo apt install postgresql
+sudo systemctl start postgresql
+sudo -u postgres psql -c "CREATE ROLE g6vendor LOGIN PASSWORD 'g6vendor' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE g6_vendor_portal OWNER g6vendor;"
+```
+
+Windows: install PostgreSQL from postgresql.org, then create the same role/database with `psql` or pgAdmin.
+
+**Option C: Any existing/hosted Postgres** — just point `DATABASE_URL` at it in step 2.
 
 ### 2. Configure environment
 
@@ -36,7 +60,7 @@ Or point `DATABASE_URL` in `.env` at any existing Postgres instance.
 cp .env.example .env
 ```
 
-Edit `.env` as needed — in particular set a strong `SESSION_SECRET`, and `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the seeded admin account.
+The defaults in `.env.example` already match the `g6vendor` / `g6_vendor_portal` role and database created above. Edit `.env` as needed — in particular set a strong `SESSION_SECRET`, and `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the seeded admin account.
 
 ### 3. Install dependencies and set up the database
 
