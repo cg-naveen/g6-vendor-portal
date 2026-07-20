@@ -6,9 +6,18 @@ export type InvoiceLineItemView = {
   amount: string;
 };
 
+export type PaymentDetailsView = {
+  bankName: string;
+  accountNumber: string;
+  ifsc?: string | null;
+  swift: string;
+  bankAddress: string;
+};
+
 export type InvoicePdfData = {
   invoiceNumber: string;
   issueDate: string;
+  dueDate: string;
   vendorDisplayName: string;
   vendorAddress: string;
   vendorEmail: string;
@@ -17,6 +26,7 @@ export type InvoicePdfData = {
   billToAddress?: string;
   lineItems: InvoiceLineItemView[];
   total: string;
+  payment: PaymentDetailsView;
   logoDataUri?: string | null;
   watermarkText?: string | null;
   footerText?: string | null;

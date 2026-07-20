@@ -84,6 +84,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           {vendor.accountType === "BUSINESS" ? (
             <section className="g6-card p-6">
               <h2 className="g6-section-label mb-4">Submitted Bills</h2>
+              <div className="overflow-x-auto">
               <table className="g6-table">
                 <thead>
                   <tr>
@@ -153,6 +154,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
                   ) : null}
                 </tbody>
               </table>
+              </div>
             </section>
           ) : null}
 
@@ -166,6 +168,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
                   </Link>
                 ) : null}
               </div>
+              <div className="overflow-x-auto">
               <table className="g6-table">
                 <thead>
                   <tr>
@@ -230,6 +233,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
                   ) : null}
                 </tbody>
               </table>
+              </div>
             </section>
           ) : null}
         </div>

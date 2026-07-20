@@ -39,6 +39,7 @@ enum InvoiceTemplate {
   CLASSIC
   MODERN
   MINIMAL
+  BOLD
 }
 
 enum SubmissionSource {

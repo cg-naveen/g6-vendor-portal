@@ -107,9 +107,13 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
     amount: fmt(Number(li.amount)),
   }));
 
+  const dueDate = new Date(submission.createdAt);
+  dueDate.setDate(dueDate.getDate() + 14);
+
   const data: InvoicePdfData = {
     invoiceNumber: submission.invoiceNumber,
     issueDate: dateFormat.format(submission.createdAt),
+    dueDate: dateFormat.format(dueDate),
     vendorDisplayName: vendorDisplayName(vendor),
     vendorAddress: vendorAddress(vendor),
     vendorEmail: vendor.vendorEmail,
@@ -118,6 +122,13 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
     billToAddress: orgSettings.address ?? undefined,
     lineItems: lineItemsView,
     total: fmt(total),
+    payment: {
+      bankName: vendor.bankName,
+      accountNumber: vendor.accountNumber,
+      ifsc: vendor.ifsc,
+      swift: vendor.swift,
+      bankAddress: vendor.bankAddress,
+    },
     logoDataUri: await logoToDataUri(vendor),
     watermarkText: vendor.watermarkText,
     footerText: vendor.footerText,

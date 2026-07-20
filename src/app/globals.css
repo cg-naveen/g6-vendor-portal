@@ -261,7 +261,7 @@ body {
   /* ---------- Tables ---------- */
   .g6-table-wrap {
     border-radius: var(--g6-radius);
-    overflow: hidden;
+    overflow-x: auto;
     border: 1px solid var(--g6-border);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
   }
