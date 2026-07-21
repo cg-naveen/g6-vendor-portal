@@ -27,6 +27,13 @@ export function InvoiceSettingsForm({
 }) {
   const [state, formAction, pending] = useActionState(updateInvoiceSettings, initialState);
   const [template, setTemplate] = useState<InvoiceTemplate>(currentTemplate);
+  const [watermarkText, setWatermarkText] = useState(currentWatermark);
+  const [footerText, setFooterText] = useState(currentFooter);
+
+  function previewUrl(templateId: InvoiceTemplate) {
+    const params = new URLSearchParams({ template: templateId, watermarkText, footerText });
+    return `/api/vendor/invoice-preview?${params.toString()}`;
+  }
 
   return (
     <form action={formAction} className="space-y-8">
@@ -37,20 +44,29 @@ export function InvoiceSettingsForm({
 
       <div>
         <span className="g6-label mb-3">Invoice Template</span>
+        <p className="mb-3 text-xs text-[#8781a0]">Select a template, then open Preview to see a sample invoice with your logo, watermark, and footer.</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TEMPLATES.map((t) => (
-            <button
+            <div
               key={t.id}
-              type="button"
-              onClick={() => setTemplate(t.id)}
-              className={`rounded-xl border p-4 text-left transition ${
+              className={`rounded-xl border p-4 transition ${
                 template === t.id ? "border-[#7c5cff] ring-2 ring-[#7c5cff]/30" : "border-white/10 hover:border-white/20"
               }`}
             >
-              <div className="mb-3 h-16 rounded-md" style={{ backgroundColor: t.accent }} />
-              <p className="text-sm font-semibold text-[#ece9f5]">{t.name}</p>
-              <p className="mt-1 text-xs text-[#8781a0]">{t.description}</p>
-            </button>
+              <button type="button" onClick={() => setTemplate(t.id)} className="block w-full text-left">
+                <div className="mb-3 h-16 rounded-md" style={{ backgroundColor: t.accent }} />
+                <p className="text-sm font-semibold text-[#ece9f5]">{t.name}</p>
+                <p className="mt-1 text-xs text-[#8781a0]">{t.description}</p>
+              </button>
+              <a
+                href={previewUrl(t.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-block text-xs font-medium text-[#9d84ff] hover:text-[#cabfff] hover:underline"
+              >
+                Preview sample PDF →
+              </a>
+            </div>
           ))}
         </div>
       </div>
@@ -72,14 +88,23 @@ export function InvoiceSettingsForm({
 
       <label className="block">
         <span className="g6-label">Watermark Text</span>
-        <input name="watermarkText" type="text" defaultValue={currentWatermark} placeholder="e.g. ORIGINAL" maxLength={60} className="g6-input" />
+        <input
+          name="watermarkText"
+          type="text"
+          value={watermarkText}
+          onChange={(e) => setWatermarkText(e.target.value)}
+          placeholder="e.g. ORIGINAL"
+          maxLength={60}
+          className="g6-input"
+        />
       </label>
 
       <label className="block">
         <span className="g6-label">Footer Text</span>
         <textarea
           name="footerText"
-          defaultValue={currentFooter}
+          value={footerText}
+          onChange={(e) => setFooterText(e.target.value)}
           rows={2}
           maxLength={200}
           placeholder="e.g. Thank you for your business. Payment due within 30 days."
