@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireVendor } from "@/lib/currentUser";
 import { vendorDisplayName } from "@/lib/invoice";
 import { getVendorFinancialSummary, formatMoney } from "@/lib/stats";
+import { isBlankHtml } from "@/lib/sanitize";
 import { StatCard } from "@/components/StatCard";
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
@@ -31,6 +32,17 @@ export default async function VendorDashboard() {
         <h1 className="g6-page-title text-[#ff9494]">Registration Rejected</h1>
         <p className="mt-3 text-sm text-[#a09bb5]">
           {vendor.rejectionReason || "Your registration was not approved. Please contact G6 Labs Asia for more details."}
+        </p>
+      </div>
+    );
+  }
+
+  if (vendor.status === "BLOCKED") {
+    return (
+      <div className="mx-auto max-w-xl g6-card p-8 text-center">
+        <h1 className="g6-page-title text-[#ff9494]">Account Blocked</h1>
+        <p className="mt-3 text-sm text-[#a09bb5]">
+          Your account access has been suspended. Please contact G6 Labs Asia to restore access.
         </p>
       </div>
     );
@@ -70,6 +82,13 @@ export default async function VendorDashboard() {
           <Link href="/vendor/tasks/new" className="g6-btn g6-btn-primary mt-4">
             Submit Delivered Tasks
           </Link>
+        </div>
+      ) : null}
+
+      {vendor.accountType === "CONTRACT_FREELANCER" && !isBlankHtml(vendor.contractInfo) ? (
+        <div className="g6-card p-6">
+          <h2 className="text-[15px] font-semibold text-[#ece9f5]">Your Contract</h2>
+          <div className="g6-prose mt-3 text-[#dcd8ea]" dangerouslySetInnerHTML={{ __html: vendor.contractInfo ?? "" }} />
         </div>
       ) : null}
 

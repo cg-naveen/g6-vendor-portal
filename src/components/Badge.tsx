@@ -24,6 +24,7 @@ export function statusBadgeVariant(status: string): keyof typeof VARIANTS {
     case "UNPAID":
       return "pending";
     case "REJECTED":
+    case "BLOCKED":
     case "OVERDUE":
       return "overdue";
     default:

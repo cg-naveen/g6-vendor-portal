@@ -38,8 +38,8 @@ export function AppShell({
       />
 
       <div className="relative z-10 flex min-h-screen">
-        <aside className="flex w-[240px] shrink-0 flex-col border-r border-white/[0.06] bg-[#0d0a15] px-4 py-6">
-          <div className="mb-7 flex items-center gap-3 px-2">
+        <aside className="sticky top-0 flex h-screen w-[240px] shrink-0 flex-col border-r border-white/[0.06] bg-[#0d0a15] px-4 py-6">
+          <div className="mb-7 flex shrink-0 items-center gap-3 px-2">
             <Image src="/g6-logo-white.png" alt="G6 Labs" width={26} height={32} className="h-8 w-auto" />
             <div className="flex flex-col leading-tight">
               <span className="text-[13px] font-bold tracking-tight text-[#ece9f5]">{portalLabel}</span>
@@ -47,7 +47,7 @@ export function AppShell({
             </div>
           </div>
 
-          <nav className="flex flex-1 flex-col gap-1">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
               return (
@@ -59,7 +59,7 @@ export function AppShell({
             })}
           </nav>
 
-          <div className="mt-4 border-t border-white/[0.06] pt-4">
+          <div className="mt-4 shrink-0 border-t border-white/[0.06] pt-4">
             <div className="mb-3 px-2">
               <div className="truncate text-[13px] font-semibold text-[#ece9f5]">{userLabel}</div>
               <div className="truncate text-[11px] text-[#8781a0]">{userSubLabel}</div>

@@ -57,6 +57,30 @@ export const adminCreateVendorSchema = z.discriminatedUnion("type", [
   individualRegistrationSchema.merge(accountTypeField),
 ]);
 
+// Admin-editable vendor fields (excludes login email, password, type & account type).
+// Type-specific required fields are enforced in the action based on vendor.type.
+export const adminEditVendorSchema = z
+  .object({
+    vendorEmail: req("Vendor email").email("Enter a valid email"),
+    companyName: z.string().trim().optional(),
+    companyRegNumber: z.string().trim().optional(),
+    businessAddress: z.string().trim().optional(),
+    contactPersonName: z.string().trim().optional(),
+    contactPersonEmail: z.string().trim().optional(),
+    contactPersonPhone: z.string().trim().optional(),
+    vendorName: z.string().trim().optional(),
+    homeAddress: z.string().trim().optional(),
+  })
+  .merge(
+    z.object({
+      phone: req("Phone number"),
+      country: req("Country"),
+      city: req("City"),
+      state: req("State"),
+    })
+  )
+  .merge(bankSchema);
+
 export const loginSchema = z.object({
   email: req("Email").email("Enter a valid email"),
   password: req("Password"),

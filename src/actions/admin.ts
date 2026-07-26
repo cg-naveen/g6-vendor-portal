@@ -6,9 +6,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/currentUser";
 import { createInvoiceSubmission, regenerateInvoicePdf } from "@/lib/invoice";
-import { taskSubmissionSchema, adminCreateVendorSchema } from "@/lib/validation";
+import { taskSubmissionSchema, adminCreateVendorSchema, adminEditVendorSchema } from "@/lib/validation";
 import { runDueRecurringBilling } from "@/lib/recurringBilling";
 import { hashPassword } from "@/lib/auth";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export type FormState = {
   error?: string;
@@ -84,38 +85,64 @@ export async function createVendorManually(_prevState: FormState, formData: Form
   redirect(`/admin/vendors/${vendor.id}`);
 }
 
-export async function approveVendor(_prevState: FormState, formData: FormData): Promise<FormState> {
+const changeStatusSchema = z.object({
+  vendorId: z.string().min(1, "Missing vendor."),
+  action: z.enum(["approve", "reject", "block", "unblock", "reopen"]),
+  accountType: accountTypeSchema.optional(),
+  reason: z.string().trim().optional(),
+});
+
+/**
+ * Single entry point for every vendor-status transition, callable inline from
+ * the vendors list or the detail page (it revalidates rather than redirects, so
+ * it works from anywhere). Approve requires an account type; the others don't.
+ */
+export async function changeVendorStatus(_prevState: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  const vendorId = String(formData.get("vendorId") ?? "");
-  const parsed = accountTypeSchema.safeParse(formData.get("accountType"));
-  if (!vendorId || !parsed.success) {
-    return { error: "Please select an account type before approving." };
+
+  const parsed = changeStatusSchema.safeParse({
+    vendorId: formData.get("vendorId"),
+    action: formData.get("action"),
+    accountType: formData.get("accountType") ?? undefined,
+    reason: formData.get("reason") ?? undefined,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid request." };
   }
 
-  await prisma.vendor.update({
-    where: { id: vendorId },
-    data: { status: "APPROVED", accountType: parsed.data, approvedAt: new Date(), rejectionReason: null },
-  });
+  const { vendorId, action, accountType, reason } = parsed.data;
+  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+  if (!vendor) return { error: "Vendor not found." };
 
-  revalidatePath(`/admin/vendors/${vendorId}`);
+  let data: Parameters<typeof prisma.vendor.update>[0]["data"];
+  switch (action) {
+    case "approve":
+      if (!accountType) return { error: "Select an account type before approving." };
+      data = { status: "APPROVED", accountType, approvedAt: new Date(), rejectionReason: null };
+      break;
+    case "reject":
+      data = { status: "REJECTED", rejectionReason: reason || null };
+      break;
+    case "block":
+      if (vendor.status !== "APPROVED") return { error: "Only approved vendors can be blocked." };
+      data = { status: "BLOCKED" };
+      break;
+    case "unblock":
+      if (vendor.status !== "BLOCKED") return { error: "This vendor is not blocked." };
+      data = { status: "APPROVED" };
+      break;
+    case "reopen":
+      data = { status: "PENDING", rejectionReason: null };
+      break;
+  }
+
+  await prisma.vendor.update({ where: { id: vendorId }, data });
+
   revalidatePath("/admin");
-  redirect(`/admin/vendors/${vendorId}`);
-}
-
-export async function rejectVendor(_prevState: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
-  const vendorId = String(formData.get("vendorId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim();
-  if (!vendorId) return { error: "Missing vendor." };
-
-  await prisma.vendor.update({
-    where: { id: vendorId },
-    data: { status: "REJECTED", rejectionReason: reason || null },
-  });
-
+  revalidatePath("/admin/vendors");
   revalidatePath(`/admin/vendors/${vendorId}`);
-  revalidatePath("/admin");
-  redirect(`/admin/vendors/${vendorId}`);
+  revalidatePath("/vendor");
+  return { success: true };
 }
 
 export async function createContractDeliverable(_prevState: FormState, formData: FormData): Promise<FormState> {
@@ -196,12 +223,107 @@ export async function updateContractDeliverable(_prevState: FormState, formData:
   redirect(`/admin/vendors/${vendorId}`);
 }
 
-const autoBillingSchema = z.object({
-  autoBillingEnabled: z.literal("on").optional(),
-  recurringDescription: z.string().trim().min(1, "Description is required"),
-  recurringAmount: z.coerce.number().positive("Amount must be greater than 0"),
-  nextBillingDate: z.string().min(1, "Next billing date is required"),
-});
+const autoBillingSchema = z
+  .object({
+    autoBillingEnabled: z.boolean(),
+    recurringDescription: z.string().trim().default(""),
+    recurringAmount: z.string().trim().default(""),
+    nextBillingDate: z.string().trim().default(""),
+  })
+  .superRefine((data, ctx) => {
+    // Only enforce the recurring fields when auto-billing is actually turned on,
+    // so an admin can disable it (or save an empty draft) without validation errors.
+    if (!data.autoBillingEnabled) return;
+    if (!data.recurringDescription) {
+      ctx.addIssue({ code: "custom", path: ["recurringDescription"], message: "Description is required when auto-billing is enabled" });
+    }
+    const amount = Number(data.recurringAmount);
+    if (!data.recurringAmount || Number.isNaN(amount) || amount <= 0) {
+      ctx.addIssue({ code: "custom", path: ["recurringAmount"], message: "Enter a recurring amount greater than 0" });
+    }
+    if (!data.nextBillingDate) {
+      ctx.addIssue({ code: "custom", path: ["nextBillingDate"], message: "Next billing date is required" });
+    }
+  });
+
+export async function adminUpdateVendor(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const vendorId = String(formData.get("vendorId") ?? "");
+  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+  if (!vendor) return { error: "Vendor not found." };
+
+  const parsed = adminEditVendorSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0] ?? "form");
+      if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+    }
+    return { error: "Please fix the errors below.", fieldErrors };
+  }
+
+  const d = parsed.data;
+
+  if (vendor.type === "BUSINESS") {
+    if (!d.companyName) return { error: "Company name is required.", fieldErrors: { companyName: "Company name is required" } };
+    if (!d.businessAddress) return { error: "Business address is required.", fieldErrors: { businessAddress: "Business address is required" } };
+  } else {
+    if (!d.vendorName) return { error: "Vendor name is required.", fieldErrors: { vendorName: "Vendor name is required" } };
+    if (!d.homeAddress) return { error: "Home address is required.", fieldErrors: { homeAddress: "Home address is required" } };
+  }
+
+  await prisma.vendor.update({
+    where: { id: vendorId },
+    data: {
+      vendorEmail: d.vendorEmail,
+      phone: d.phone,
+      country: d.country,
+      city: d.city,
+      state: d.state,
+      bankName: d.bankName,
+      accountNumber: d.accountNumber,
+      ifsc: d.ifsc || null,
+      swift: d.swift,
+      bankAddress: d.bankAddress,
+      ...(vendor.type === "BUSINESS"
+        ? {
+            companyName: d.companyName,
+            companyRegNumber: d.companyRegNumber || null,
+            businessAddress: d.businessAddress,
+            contactPersonName: d.contactPersonName || null,
+            contactPersonEmail: d.contactPersonEmail || null,
+            contactPersonPhone: d.contactPersonPhone || null,
+          }
+        : {
+            vendorName: d.vendorName,
+            homeAddress: d.homeAddress,
+          }),
+    },
+  });
+
+  revalidatePath(`/admin/vendors/${vendorId}`);
+  redirect(`/admin/vendors/${vendorId}`);
+}
+
+export async function updateContractInfo(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const vendorId = String(formData.get("vendorId") ?? "");
+  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+  if (!vendor || vendor.accountType !== "CONTRACT_FREELANCER") {
+    return { error: "This vendor is not a Contract Freelancer." };
+  }
+
+  const clean = sanitizeHtml(String(formData.get("contractInfo") ?? ""));
+
+  await prisma.vendor.update({
+    where: { id: vendorId },
+    data: { contractInfo: clean || null },
+  });
+
+  revalidatePath(`/admin/vendors/${vendorId}`);
+  revalidatePath("/vendor");
+  return { success: true };
+}
 
 export async function updateAutoBilling(_prevState: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
@@ -212,22 +334,25 @@ export async function updateAutoBilling(_prevState: FormState, formData: FormDat
   }
 
   const parsed = autoBillingSchema.safeParse({
-    autoBillingEnabled: formData.get("autoBillingEnabled"),
-    recurringDescription: formData.get("recurringDescription"),
-    recurringAmount: formData.get("recurringAmount"),
-    nextBillingDate: formData.get("nextBillingDate"),
+    // An unchecked checkbox is absent from FormData (null), so normalise to a boolean here.
+    autoBillingEnabled: formData.get("autoBillingEnabled") === "on",
+    recurringDescription: formData.get("recurringDescription") ?? "",
+    recurringAmount: formData.get("recurringAmount") ?? "",
+    nextBillingDate: formData.get("nextBillingDate") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the auto-billing settings." };
   }
 
+  const { autoBillingEnabled, recurringDescription, recurringAmount, nextBillingDate } = parsed.data;
+
   await prisma.vendor.update({
     where: { id: vendorId },
     data: {
-      autoBillingEnabled: parsed.data.autoBillingEnabled === "on",
-      recurringDescription: parsed.data.recurringDescription,
-      recurringAmount: parsed.data.recurringAmount,
-      nextBillingDate: new Date(parsed.data.nextBillingDate),
+      autoBillingEnabled,
+      recurringDescription: recurringDescription || null,
+      recurringAmount: recurringAmount ? Number(recurringAmount) : null,
+      nextBillingDate: nextBillingDate ? new Date(nextBillingDate) : null,
     },
   });
 

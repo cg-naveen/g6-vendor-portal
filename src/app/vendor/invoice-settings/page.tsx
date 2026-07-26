@@ -4,7 +4,7 @@ import { InvoiceSettingsForm } from "./InvoiceSettingsForm";
 
 export default async function InvoiceSettingsPage() {
   const vendor = await requireVendor();
-  if (vendor.accountType !== "FREELANCER" && vendor.accountType !== "CONTRACT_FREELANCER") {
+  if (vendor.status !== "APPROVED" || (vendor.accountType !== "FREELANCER" && vendor.accountType !== "CONTRACT_FREELANCER")) {
     redirect("/vendor");
   }
 

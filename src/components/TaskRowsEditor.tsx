@@ -89,13 +89,13 @@ export function TaskRowsEditor({
                   />
                 </td>
                 <td>
-                  <input
-                    type="text"
+                  <textarea
                     value={row.description}
                     onChange={(e) => updateRow(i, "description", e.target.value)}
                     required
-                    placeholder="Describe the deliverable"
-                    className={`w-full min-w-[200px] ${cellInputClass}`}
+                    rows={2}
+                    placeholder="Describe the deliverable (multiple lines allowed)"
+                    className={`w-full min-w-[220px] resize-y ${cellInputClass}`}
                   />
                 </td>
                 <td>

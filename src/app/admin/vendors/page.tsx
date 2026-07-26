@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { vendorDisplayName } from "@/lib/invoice";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
+import { VendorListActions } from "./VendorListActions";
 import type { VendorStatus } from "@prisma/client";
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
@@ -12,7 +13,7 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
 
 export default async function AllVendorsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams;
-  const filter = status && ["PENDING", "APPROVED", "REJECTED"].includes(status) ? (status as VendorStatus) : undefined;
+  const filter = status && ["PENDING", "APPROVED", "REJECTED", "BLOCKED"].includes(status) ? (status as VendorStatus) : undefined;
 
   const vendors = await prisma.vendor.findMany({
     where: filter ? { status: filter } : undefined,
@@ -25,7 +26,7 @@ export default async function AllVendorsPage({ searchParams }: { searchParams: P
         <h1 className="g6-page-title">All Vendors</h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-1 rounded-[11px] bg-black/30 p-1 text-sm">
-            {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+            {["ALL", "PENDING", "APPROVED", "REJECTED", "BLOCKED"].map((s) => (
               <Link
                 key={s}
                 href={s === "ALL" ? "/admin/vendors" : `/admin/vendors?status=${s}`}
@@ -64,9 +65,12 @@ export default async function AllVendorsPage({ searchParams }: { searchParams: P
                   <Badge variant={statusBadgeVariant(v.status)}>{v.status}</Badge>
                 </td>
                 <td>
-                  <Link href={`/admin/vendors/${v.id}`} className="text-[#9d84ff] hover:text-[#cabfff]">
-                    View
-                  </Link>
+                  <div className="flex items-center justify-end gap-3">
+                    <VendorListActions vendorId={v.id} status={v.status} currentAccountType={v.accountType} />
+                    <Link href={`/admin/vendors/${v.id}`} className="shrink-0 text-[#9d84ff] hover:text-[#cabfff]">
+                      View
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

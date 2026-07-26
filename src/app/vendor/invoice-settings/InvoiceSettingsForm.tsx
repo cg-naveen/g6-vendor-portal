@@ -29,11 +29,20 @@ export function InvoiceSettingsForm({
   const [template, setTemplate] = useState<InvoiceTemplate>(currentTemplate);
   const [watermarkText, setWatermarkText] = useState(currentWatermark);
   const [footerText, setFooterText] = useState(currentFooter);
+  // Bump to force the preview iframe to reload with the latest field values.
+  const [previewNonce, setPreviewNonce] = useState(0);
 
-  function previewUrl(templateId: InvoiceTemplate) {
-    const params = new URLSearchParams({ template: templateId, watermarkText, footerText });
+  function previewUrl(templateId: InvoiceTemplate, nonce: number) {
+    const params = new URLSearchParams({ template: templateId, watermarkText, footerText, n: String(nonce) });
     return `/api/vendor/invoice-preview?${params.toString()}`;
   }
+
+  function selectTemplate(id: InvoiceTemplate) {
+    setTemplate(id);
+    setPreviewNonce((n) => n + 1);
+  }
+
+  const src = previewUrl(template, previewNonce);
 
   return (
     <form action={formAction} className="space-y-8">
@@ -44,31 +53,48 @@ export function InvoiceSettingsForm({
 
       <div>
         <span className="g6-label mb-3">Invoice Template</span>
-        <p className="mb-3 text-xs text-[#8781a0]">Select a template, then open Preview to see a sample invoice with your logo, watermark, and footer.</p>
+        <p className="mb-3 text-xs text-[#8781a0]">Pick a design — the live preview below shows a sample invoice with your details, logo, watermark, and footer.</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TEMPLATES.map((t) => (
-            <div
+            <button
               key={t.id}
-              className={`rounded-xl border p-4 transition ${
+              type="button"
+              onClick={() => selectTemplate(t.id)}
+              className={`rounded-xl border p-4 text-left transition ${
                 template === t.id ? "border-[#7c5cff] ring-2 ring-[#7c5cff]/30" : "border-white/10 hover:border-white/20"
               }`}
             >
-              <button type="button" onClick={() => setTemplate(t.id)} className="block w-full text-left">
-                <div className="mb-3 h-16 rounded-md" style={{ backgroundColor: t.accent }} />
-                <p className="text-sm font-semibold text-[#ece9f5]">{t.name}</p>
-                <p className="mt-1 text-xs text-[#8781a0]">{t.description}</p>
-              </button>
-              <a
-                href={previewUrl(t.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-block text-xs font-medium text-[#9d84ff] hover:text-[#cabfff] hover:underline"
-              >
-                Preview sample PDF →
-              </a>
-            </div>
+              <div className="mb-3 h-16 rounded-md" style={{ backgroundColor: t.accent }} />
+              <p className="text-sm font-semibold text-[#ece9f5]">{t.name}</p>
+              <p className="mt-1 text-xs text-[#8781a0]">{t.description}</p>
+            </button>
           ))}
         </div>
+      </div>
+
+      {/* Inline live preview */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <span className="g6-label mb-0">Live Preview — {TEMPLATES.find((t) => t.id === template)?.name}</span>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setPreviewNonce((n) => n + 1)} className="g6-btn g6-btn-secondary g6-btn-sm">
+              Refresh preview
+            </button>
+            <a href={src} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#9d84ff] hover:text-[#cabfff] hover:underline">
+              Open in new tab ↗
+            </a>
+          </div>
+        </div>
+        <iframe
+          key={src}
+          title="Invoice preview"
+          src={src}
+          className="h-[640px] w-full rounded-xl border border-white/10 bg-white"
+        />
+        <p className="mt-2 text-xs text-[#5c5770]">
+          Sample data is used for the preview. Edit the watermark or footer below and click “Refresh preview” to see the change.
+          {hasLogo ? "" : " Upload a logo below to include it on your invoices."}
+        </p>
       </div>
 
       <div>
@@ -83,7 +109,7 @@ export function InvoiceSettingsForm({
           accept="image/png,image/jpeg,image/svg+xml"
           className="block w-full rounded-[11px] border border-white/10 bg-black/30 text-sm text-[#a09bb5] file:mr-4 file:cursor-pointer file:rounded-[9px] file:border-0 file:bg-[#7c5cff]/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#cabfff] hover:file:bg-[#7c5cff]/30"
         />
-        <p className="mt-1 text-xs text-[#5c5770]">Shown at the top of your generated invoices.</p>
+        <p className="mt-1 text-xs text-[#5c5770]">Shown at the top of your generated invoices. Save settings first, then refresh the preview to see it.</p>
       </div>
 
       <label className="block">

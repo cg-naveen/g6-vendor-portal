@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
 
   const vendor = await prisma.vendor.findUnique({ where: { id: session.vendorId } });
   if (!vendor) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (vendor.status !== "APPROVED") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const templateParam = req.nextUrl.searchParams.get("template") as InvoiceTemplate | null;
   const template = templateParam && TEMPLATES.includes(templateParam) ? templateParam : vendor.invoiceTemplate;

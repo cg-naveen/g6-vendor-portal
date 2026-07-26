@@ -4,6 +4,7 @@ import { vendorDisplayName } from "@/lib/invoice";
 import { getOrgFinancialSummary, formatMoney } from "@/lib/stats";
 import { StatCard } from "@/components/StatCard";
 import { RunBillingButton } from "./RunBillingButton";
+import { VendorListActions } from "./vendors/VendorListActions";
 
 export default async function AdminDashboard() {
   const [pending, summary, vendorCount] = await Promise.all([
@@ -51,9 +52,12 @@ export default async function AdminDashboard() {
                   <td>{v.vendorEmail}</td>
                   <td>{v.createdAt.toLocaleDateString()}</td>
                   <td>
-                    <Link href={`/admin/vendors/${v.id}`} className="text-[#9d84ff] hover:text-[#cabfff]">
-                      Review
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <VendorListActions vendorId={v.id} status={v.status} currentAccountType={v.accountType} />
+                      <Link href={`/admin/vendors/${v.id}`} className="shrink-0 text-[#9d84ff] hover:text-[#cabfff]">
+                        Review
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { vendorDisplayName } from "@/lib/invoice";
 import { updateBillStatus } from "@/actions/bills";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
-import { ApproveForm, RejectForm } from "./ApproveRejectForms";
 import { MarkBillPaidForm, MarkInvoicePaidForm } from "./MarkPaidForms";
 import { AutoBillingForm } from "./AutoBillingForm";
+import { ContractInfoForm } from "./ContractInfoForm";
+import { VendorStatusActions } from "./VendorStatusActions";
 
 export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,12 +23,17 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="g6-page-title">{vendorDisplayName(vendor)}</h1>
           <p className="g6-page-subtitle mt-1">{vendor.type === "BUSINESS" ? "Business Vendor" : "Individual Vendor"}</p>
         </div>
-        <Badge variant={statusBadgeVariant(vendor.status)}>{vendor.status}</Badge>
+        <div className="flex items-center gap-3">
+          <Link href={`/admin/vendors/${vendor.id}/edit`} className="g6-btn g6-btn-secondary g6-btn-sm">
+            Edit Vendor
+          </Link>
+          <Badge variant={statusBadgeVariant(vendor.status)}>{vendor.status}</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -69,6 +75,13 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
               <Detail label="Bank Address" value={vendor.bankAddress} full />
             </dl>
           </section>
+
+          {vendor.accountType === "CONTRACT_FREELANCER" ? (
+            <section className="g6-card p-6">
+              <h2 className="g6-section-label mb-4">Contract Information</h2>
+              <ContractInfoForm vendorId={vendor.id} initialHtml={vendor.contractInfo ?? ""} />
+            </section>
+          ) : null}
 
           {vendor.accountType === "CONTRACT_FREELANCER" ? (
             <AutoBillingForm
@@ -239,12 +252,14 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
         </div>
 
         <div className="space-y-4">
-          <ApproveForm vendorId={vendor.id} currentAccountType={vendor.accountType} />
-          <RejectForm vendorId={vendor.id} />
+          <VendorStatusActions vendorId={vendor.id} status={vendor.status} currentAccountType={vendor.accountType} />
           {vendor.status === "REJECTED" && vendor.rejectionReason ? (
             <div className="g6-alert g6-alert-error">
-              <strong>Last rejection reason:</strong> {vendor.rejectionReason}
+              <strong>Rejection reason:</strong> {vendor.rejectionReason}
             </div>
+          ) : null}
+          {vendor.status === "BLOCKED" ? (
+            <div className="g6-alert g6-alert-error">This vendor is blocked and cannot access the portal.</div>
           ) : null}
         </div>
       </div>

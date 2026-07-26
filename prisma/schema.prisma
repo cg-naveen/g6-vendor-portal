@@ -21,6 +21,7 @@ enum VendorStatus {
   PENDING
   APPROVED
   REJECTED
+  BLOCKED
 }
 
 enum AccountType {
@@ -104,6 +105,9 @@ model Vendor {
   logoUrl         String?
   watermarkText   String?
   footerText      String?
+
+  // Contract terms / scope (Contract Freelancer) — rich text (HTML)
+  contractInfo String? @db.Text
 
   // Recurring auto-billing (Contract Freelancer)
   autoBillingEnabled   Boolean   @default(false)
