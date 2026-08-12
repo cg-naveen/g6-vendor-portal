@@ -57,9 +57,15 @@ export async function registerVendor(_prevState: FormState, formData: FormData):
         state: data.state,
         bankName: data.bankName,
         accountNumber: data.accountNumber,
+        accountHolderName: data.accountHolderName,
         ifsc: data.ifsc || null,
         swift: data.swift,
-        bankAddress: data.bankAddress,
+        bankAddressLine1: data.bankAddressLine1,
+        bankAddressLine2: data.bankAddressLine2 || null,
+        bankCity: data.bankCity,
+        bankPostcode: data.bankPostcode,
+        bankState: data.bankState,
+        bankCountry: data.bankCountry,
         ...(data.type === "BUSINESS"
           ? {
               companyName: data.companyName,
@@ -71,7 +77,12 @@ export async function registerVendor(_prevState: FormState, formData: FormData):
             }
           : {
               vendorName: data.vendorName,
-              homeAddress: data.homeAddress,
+              homeAddressLine1: data.homeAddressLine1,
+              homeAddressLine2: data.homeAddressLine2 || null,
+              homeCity: data.homeCity,
+              homePostcode: data.homePostcode,
+              homeState: data.homeState,
+              homeCountry: data.homeCountry,
             }),
       },
     });

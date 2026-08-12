@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { adminUpdateVendor, type FormState } from "@/actions/admin";
 import { FormField } from "@/components/FormField";
+import { AddressFields } from "@/components/AddressFields";
 import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 
 export type EditVendorFields = {
@@ -21,12 +22,23 @@ export type EditVendorFields = {
   contactPersonEmail: string | null;
   contactPersonPhone: string | null;
   vendorName: string | null;
-  homeAddress: string | null;
+  homeAddressLine1: string | null;
+  homeAddressLine2: string | null;
+  homeCity: string | null;
+  homePostcode: string | null;
+  homeState: string | null;
+  homeCountry: string | null;
   bankName: string;
   accountNumber: string;
+  accountHolderName: string | null;
   ifsc: string | null;
   swift: string;
-  bankAddress: string;
+  bankAddressLine1: string | null;
+  bankAddressLine2: string | null;
+  bankCity: string | null;
+  bankPostcode: string | null;
+  bankState: string | null;
+  bankCountry: string | null;
 };
 
 const initialState: FormState = {};
@@ -58,7 +70,19 @@ export function AdminEditVendorForm({ vendor }: { vendor: EditVendorFields }) {
         <section className="space-y-4">
           <h2 className="g6-section-label">Individual Details</h2>
           <FormField label="Vendor Name" name="vendorName" required defaultValue={vendor.vendorName ?? ""} error={errors.vendorName} />
-          <FormField label="Home Address" name="homeAddress" as="textarea" required defaultValue={vendor.homeAddress ?? ""} error={errors.homeAddress} />
+          <h3 className="g6-label">Home Address</h3>
+          <AddressFields
+            prefix="home"
+            errors={errors}
+            defaultValues={{
+              line1: vendor.homeAddressLine1,
+              line2: vendor.homeAddressLine2,
+              city: vendor.homeCity,
+              postcode: vendor.homePostcode,
+              state: vendor.homeState,
+              country: vendor.homeCountry,
+            }}
+          />
         </section>
       )}
 
@@ -77,12 +101,31 @@ export function AdminEditVendorForm({ vendor }: { vendor: EditVendorFields }) {
       <section className="space-y-4">
         <h2 className="g6-section-label">Bank Details</h2>
         <FormField label="Bank Name" name="bankName" required defaultValue={vendor.bankName} error={errors.bankName} />
+        <FormField
+          label="Account Holder Name"
+          name="accountHolderName"
+          required
+          defaultValue={vendor.accountHolderName ?? ""}
+          error={errors.accountHolderName}
+        />
         <FormField label="Account Number" name="accountNumber" required defaultValue={vendor.accountNumber} error={errors.accountNumber} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="IFSC" name="ifsc" defaultValue={vendor.ifsc ?? ""} />
           <FormField label="SWIFT" name="swift" required defaultValue={vendor.swift} error={errors.swift} />
         </div>
-        <FormField label="Bank Address" name="bankAddress" as="textarea" required defaultValue={vendor.bankAddress} error={errors.bankAddress} />
+        <h3 className="g6-label">Bank Address</h3>
+        <AddressFields
+          prefix="bank"
+          errors={errors}
+          defaultValues={{
+            line1: vendor.bankAddressLine1,
+            line2: vendor.bankAddressLine2,
+            city: vendor.bankCity,
+            postcode: vendor.bankPostcode,
+            state: vendor.bankState,
+            country: vendor.bankCountry,
+          }}
+        />
       </section>
 
       <div className="flex gap-3">

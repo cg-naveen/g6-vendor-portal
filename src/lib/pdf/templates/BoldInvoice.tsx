@@ -49,6 +49,7 @@ const styles = StyleSheet.create({
   paymentLine: { fontSize: 9, color: "#3f3f46", marginBottom: 3 },
 
   signBox: { marginTop: 40, alignItems: "flex-end" },
+  signImage: { width: 140, height: 50, objectFit: "contain", marginBottom: 4 },
   signLine: { width: 160, borderTop: "0.5 solid #a1a1aa", paddingTop: 4, textAlign: "center" },
   signText: { fontSize: 8, color: "#71717a" },
 
@@ -83,6 +84,7 @@ export function BoldInvoice({ data }: { data: InvoicePdfData }) {
               <Text style={styles.invoiceToLabel}>Invoice To:</Text>
               <Text style={styles.value}>{data.billToName}</Text>
               {data.billToAddress ? <Text style={styles.value}>{data.billToAddress}</Text> : null}
+              {data.billToEmail ? <Text style={styles.value}>{data.billToEmail}</Text> : null}
             </View>
             <View style={{ width: "48%", textAlign: "right" }}>
               <Text style={styles.metaLabel}>Invoice #</Text>
@@ -134,12 +136,11 @@ export function BoldInvoice({ data }: { data: InvoicePdfData }) {
           <View style={styles.lowerGrid}>
             <View style={styles.lowerCol}>
               <Text style={styles.sectionLabel}>Payment Info</Text>
-              <Text style={styles.paymentLine}>A/C Name: {data.vendorDisplayName}</Text>
+              <Text style={styles.paymentLine}>A/C Name: {data.payment.accountHolderName}</Text>
               <Text style={styles.paymentLine}>Account #: {data.payment.accountNumber}</Text>
               <Text style={styles.paymentLine}>Bank Name: {data.payment.bankName}</Text>
               {data.payment.ifsc ? <Text style={styles.paymentLine}>IFSC: {data.payment.ifsc}</Text> : null}
               <Text style={styles.paymentLine}>SWIFT: {data.payment.swift}</Text>
-              <Text style={styles.paymentLine}>Bank Address: {data.payment.bankAddress}</Text>
             </View>
             <View style={[styles.lowerCol, { alignItems: "flex-end" }]}>
               {data.notes ? (
@@ -149,6 +150,7 @@ export function BoldInvoice({ data }: { data: InvoicePdfData }) {
                 </View>
               ) : null}
               <View style={styles.signBox}>
+                {data.signatureDataUri ? <Image src={data.signatureDataUri} style={styles.signImage} /> : null}
                 <View style={styles.signLine}>
                   <Text style={styles.signText}>Authorised Sign</Text>
                 </View>

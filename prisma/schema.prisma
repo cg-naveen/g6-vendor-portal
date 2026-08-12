@@ -91,20 +91,37 @@ model Vendor {
 
   // Individual fields
   vendorName  String?
-  homeAddress String?
+
+  // Individual home address (structured)
+  homeAddressLine1 String?
+  homeAddressLine2 String?
+  homeCity         String?
+  homePostcode     String?
+  homeState        String?
+  homeCountry      String?
 
   // Bank details
-  bankName      String
-  accountNumber String
-  ifsc          String?
-  swift         String
-  bankAddress   String
+  bankName          String
+  accountNumber     String
+  accountHolderName String?
+  ifsc              String?
+  swift             String
+
+  // Bank address (structured)
+  bankAddressLine1 String?
+  bankAddressLine2 String?
+  bankCity         String?
+  bankPostcode     String?
+  bankState        String?
+  bankCountry      String?
 
   // Invoice customization (Freelancer / Contract Freelancer)
-  invoiceTemplate InvoiceTemplate @default(CLASSIC)
-  logoUrl         String?
-  watermarkText   String?
-  footerText      String?
+  invoiceTemplate  InvoiceTemplate @default(CLASSIC)
+  logoUrl          String?
+  signatureUrl     String?
+  watermarkText    String?
+  footerText       String?
+  invoiceSequence  Int             @default(0)
 
   // Contract terms / scope (Contract Freelancer) — rich text (HTML)
   contractInfo String? @db.Text
@@ -156,7 +173,7 @@ model InvoiceSubmission {
   id            String           @id @default(cuid())
   vendorId      String
   vendor        Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  invoiceNumber String           @unique
+  invoiceNumber String
   source        SubmissionSource
   template      InvoiceTemplate
   pdfPath       String?
@@ -174,6 +191,7 @@ model InvoiceSubmission {
 
   lineItems TaskLineItem[]
 
+  @@unique([vendorId, invoiceNumber])
   @@index([vendorId])
 }
 

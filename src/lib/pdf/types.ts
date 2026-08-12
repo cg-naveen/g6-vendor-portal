@@ -9,9 +9,9 @@ export type InvoiceLineItemView = {
 export type PaymentDetailsView = {
   bankName: string;
   accountNumber: string;
+  accountHolderName: string;
   ifsc?: string | null;
   swift: string;
-  bankAddress: string;
 };
 
 export type InvoicePdfData = {
@@ -24,10 +24,12 @@ export type InvoicePdfData = {
   vendorPhone: string;
   billToName: string;
   billToAddress?: string;
+  billToEmail?: string | null;
   lineItems: InvoiceLineItemView[];
   total: string;
   payment: PaymentDetailsView;
   logoDataUri?: string | null;
+  signatureDataUri?: string | null;
   watermarkText?: string | null;
   footerText?: string | null;
   notes?: string | null;

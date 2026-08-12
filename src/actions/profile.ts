@@ -22,7 +22,12 @@ const vendorProfileSchema = z
     contactPersonName: z.string().trim().nullish(),
     contactPersonEmail: z.string().trim().nullish(),
     contactPersonPhone: z.string().trim().nullish(),
-    homeAddress: z.string().trim().nullish(),
+    homeAddressLine1: z.string().trim().nullish(),
+    homeAddressLine2: z.string().trim().nullish(),
+    homeCity: z.string().trim().nullish(),
+    homePostcode: z.string().trim().nullish(),
+    homeState: z.string().trim().nullish(),
+    homeCountry: z.string().trim().nullish(),
   })
   .merge(bankSchema);
 
@@ -38,12 +43,23 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
     contactPersonName: formData.get("contactPersonName"),
     contactPersonEmail: formData.get("contactPersonEmail"),
     contactPersonPhone: formData.get("contactPersonPhone"),
-    homeAddress: formData.get("homeAddress"),
+    homeAddressLine1: formData.get("homeAddressLine1"),
+    homeAddressLine2: formData.get("homeAddressLine2"),
+    homeCity: formData.get("homeCity"),
+    homePostcode: formData.get("homePostcode"),
+    homeState: formData.get("homeState"),
+    homeCountry: formData.get("homeCountry"),
     bankName: formData.get("bankName"),
     accountNumber: formData.get("accountNumber"),
+    accountHolderName: formData.get("accountHolderName"),
     ifsc: formData.get("ifsc"),
     swift: formData.get("swift"),
-    bankAddress: formData.get("bankAddress"),
+    bankAddressLine1: formData.get("bankAddressLine1"),
+    bankAddressLine2: formData.get("bankAddressLine2"),
+    bankCity: formData.get("bankCity"),
+    bankPostcode: formData.get("bankPostcode"),
+    bankState: formData.get("bankState"),
+    bankCountry: formData.get("bankCountry"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check your details." };
@@ -60,9 +76,15 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
       state: data.state,
       bankName: data.bankName,
       accountNumber: data.accountNumber,
+      accountHolderName: data.accountHolderName,
       ifsc: data.ifsc || null,
       swift: data.swift,
-      bankAddress: data.bankAddress,
+      bankAddressLine1: data.bankAddressLine1,
+      bankAddressLine2: data.bankAddressLine2 || null,
+      bankCity: data.bankCity,
+      bankPostcode: data.bankPostcode,
+      bankState: data.bankState,
+      bankCountry: data.bankCountry,
       ...(vendor.type === "BUSINESS"
         ? {
             businessAddress: data.businessAddress || vendor.businessAddress,
@@ -71,7 +93,12 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
             contactPersonPhone: data.contactPersonPhone || vendor.contactPersonPhone,
           }
         : {
-            homeAddress: data.homeAddress || vendor.homeAddress,
+            homeAddressLine1: data.homeAddressLine1 || vendor.homeAddressLine1,
+            homeAddressLine2: data.homeAddressLine2 || vendor.homeAddressLine2,
+            homeCity: data.homeCity || vendor.homeCity,
+            homePostcode: data.homePostcode || vendor.homePostcode,
+            homeState: data.homeState || vendor.homeState,
+            homeCountry: data.homeCountry || vendor.homeCountry,
           }),
     },
   });

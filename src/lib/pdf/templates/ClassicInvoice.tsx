@@ -44,6 +44,11 @@ const styles = StyleSheet.create({
 
   notes: { marginTop: 20, fontSize: 9, color: "#52525b" },
 
+  signBox: { marginTop: 24, alignItems: "flex-end" },
+  signImage: { width: 140, height: 50, objectFit: "contain", marginBottom: 4 },
+  signLine: { width: 160, borderTop: "0.5 solid #a1a1aa", paddingTop: 4, textAlign: "center" },
+  signText: { fontSize: 8, color: "#71717a" },
+
   footerBar: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#18181b", paddingVertical: 14, paddingHorizontal: 40, textAlign: "center" },
   footerText: { fontSize: 8, color: "#d4d4d8" },
 
@@ -91,6 +96,7 @@ export function ClassicInvoice({ data }: { data: InvoicePdfData }) {
               <Text style={styles.label}>Bill To</Text>
               <Text style={styles.value}>{data.billToName}</Text>
               {data.billToAddress ? <Text style={styles.value}>{data.billToAddress}</Text> : null}
+              {data.billToEmail ? <Text style={styles.value}>{data.billToEmail}</Text> : null}
             </View>
           </View>
 
@@ -131,6 +137,10 @@ export function ClassicInvoice({ data }: { data: InvoicePdfData }) {
                   <Text style={styles.paymentValue}>{data.payment.bankName}</Text>
                 </View>
                 <View style={styles.paymentLine}>
+                  <Text style={styles.paymentLabel}>Account Holder Name</Text>
+                  <Text style={styles.paymentValue}>{data.payment.accountHolderName}</Text>
+                </View>
+                <View style={styles.paymentLine}>
                   <Text style={styles.paymentLabel}>Account Number</Text>
                   <Text style={styles.paymentValue}>{data.payment.accountNumber}</Text>
                 </View>
@@ -144,10 +154,6 @@ export function ClassicInvoice({ data }: { data: InvoicePdfData }) {
                   <Text style={styles.paymentLabel}>SWIFT</Text>
                   <Text style={styles.paymentValue}>{data.payment.swift}</Text>
                 </View>
-                <View style={styles.paymentLine}>
-                  <Text style={styles.paymentLabel}>Bank Address</Text>
-                  <Text style={styles.paymentValue}>{data.payment.bankAddress}</Text>
-                </View>
               </View>
             </View>
             {data.notes ? (
@@ -156,6 +162,13 @@ export function ClassicInvoice({ data }: { data: InvoicePdfData }) {
                 <Text style={styles.notes}>{data.notes}</Text>
               </View>
             ) : null}
+          </View>
+
+          <View style={styles.signBox}>
+            {data.signatureDataUri ? <Image src={data.signatureDataUri} style={styles.signImage} /> : null}
+            <View style={styles.signLine}>
+              <Text style={styles.signText}>Authorized Signature</Text>
+            </View>
           </View>
         </View>
 

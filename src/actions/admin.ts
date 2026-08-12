@@ -61,9 +61,15 @@ export async function createVendorManually(_prevState: FormState, formData: Form
         state: data.state,
         bankName: data.bankName,
         accountNumber: data.accountNumber,
+        accountHolderName: data.accountHolderName,
         ifsc: data.ifsc || null,
         swift: data.swift,
-        bankAddress: data.bankAddress,
+        bankAddressLine1: data.bankAddressLine1,
+        bankAddressLine2: data.bankAddressLine2 || null,
+        bankCity: data.bankCity,
+        bankPostcode: data.bankPostcode,
+        bankState: data.bankState,
+        bankCountry: data.bankCountry,
         ...(data.type === "BUSINESS"
           ? {
               companyName: data.companyName,
@@ -75,7 +81,12 @@ export async function createVendorManually(_prevState: FormState, formData: Form
             }
           : {
               vendorName: data.vendorName,
-              homeAddress: data.homeAddress,
+              homeAddressLine1: data.homeAddressLine1,
+              homeAddressLine2: data.homeAddressLine2 || null,
+              homeCity: data.homeCity,
+              homePostcode: data.homePostcode,
+              homeState: data.homeState,
+              homeCountry: data.homeCountry,
             }),
       },
     });
@@ -269,7 +280,11 @@ export async function adminUpdateVendor(_prevState: FormState, formData: FormDat
     if (!d.businessAddress) return { error: "Business address is required.", fieldErrors: { businessAddress: "Business address is required" } };
   } else {
     if (!d.vendorName) return { error: "Vendor name is required.", fieldErrors: { vendorName: "Vendor name is required" } };
-    if (!d.homeAddress) return { error: "Home address is required.", fieldErrors: { homeAddress: "Home address is required" } };
+    if (!d.homeAddressLine1) return { error: "Home address is required.", fieldErrors: { homeAddressLine1: "Home address is required" } };
+    if (!d.homeCity) return { error: "Home city is required.", fieldErrors: { homeCity: "Home city is required" } };
+    if (!d.homePostcode) return { error: "Home postcode is required.", fieldErrors: { homePostcode: "Home postcode is required" } };
+    if (!d.homeState) return { error: "Home state is required.", fieldErrors: { homeState: "Home state is required" } };
+    if (!d.homeCountry) return { error: "Home country is required.", fieldErrors: { homeCountry: "Home country is required" } };
   }
 
   await prisma.vendor.update({
@@ -282,9 +297,15 @@ export async function adminUpdateVendor(_prevState: FormState, formData: FormDat
       state: d.state,
       bankName: d.bankName,
       accountNumber: d.accountNumber,
+      accountHolderName: d.accountHolderName,
       ifsc: d.ifsc || null,
       swift: d.swift,
-      bankAddress: d.bankAddress,
+      bankAddressLine1: d.bankAddressLine1,
+      bankAddressLine2: d.bankAddressLine2 || null,
+      bankCity: d.bankCity,
+      bankPostcode: d.bankPostcode,
+      bankState: d.bankState,
+      bankCountry: d.bankCountry,
       ...(vendor.type === "BUSINESS"
         ? {
             companyName: d.companyName,
@@ -296,7 +317,12 @@ export async function adminUpdateVendor(_prevState: FormState, formData: FormDat
           }
         : {
             vendorName: d.vendorName,
-            homeAddress: d.homeAddress,
+            homeAddressLine1: d.homeAddressLine1,
+            homeAddressLine2: d.homeAddressLine2 || null,
+            homeCity: d.homeCity,
+            homePostcode: d.homePostcode,
+            homeState: d.homeState,
+            homeCountry: d.homeCountry,
           }),
     },
   });

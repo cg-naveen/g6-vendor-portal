@@ -44,6 +44,11 @@ const styles = StyleSheet.create({
 
   notes: { marginTop: 16, fontSize: 9, color: "#475569" },
 
+  signBox: { marginTop: 24, alignItems: "flex-end" },
+  signImage: { width: 140, height: 50, objectFit: "contain", marginBottom: 4 },
+  signLine: { width: 160, borderTop: "0.5 solid #94a3b8", paddingTop: 4, textAlign: "center" },
+  signText: { fontSize: 8, color: "#64748b" },
+
   paymentBar: { backgroundColor: NAVY, paddingHorizontal: 40, paddingVertical: 18, flexDirection: "row", justifyContent: "space-between", marginTop: 28 },
   paymentCol: { flex: 1 },
   paymentHeading: { fontSize: 10, fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
@@ -89,6 +94,7 @@ export function ModernInvoice({ data }: { data: InvoicePdfData }) {
               <Text style={styles.label}>Bill To</Text>
               <Text style={styles.value}>{data.billToName}</Text>
               {data.billToAddress ? <Text style={styles.value}>{data.billToAddress}</Text> : null}
+              {data.billToEmail ? <Text style={styles.value}>{data.billToEmail}</Text> : null}
             </View>
           </View>
 
@@ -132,16 +138,23 @@ export function ModernInvoice({ data }: { data: InvoicePdfData }) {
               <Text>{data.notes}</Text>
             </View>
           ) : null}
+
+          <View style={styles.signBox}>
+            {data.signatureDataUri ? <Image src={data.signatureDataUri} style={styles.signImage} /> : null}
+            <View style={styles.signLine}>
+              <Text style={styles.signText}>Authorized Signature</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.paymentBar}>
           <View style={styles.paymentCol}>
             <Text style={styles.paymentHeading}>Payment Information</Text>
             <Text style={styles.paymentLine}>Bank Name: {data.payment.bankName}</Text>
+            <Text style={styles.paymentLine}>Account Holder Name: {data.payment.accountHolderName}</Text>
             <Text style={styles.paymentLine}>Account Number: {data.payment.accountNumber}</Text>
             {data.payment.ifsc ? <Text style={styles.paymentLine}>IFSC: {data.payment.ifsc}</Text> : null}
             <Text style={styles.paymentLine}>SWIFT: {data.payment.swift}</Text>
-            <Text style={styles.paymentLine}>Bank Address: {data.payment.bankAddress}</Text>
           </View>
           <View style={[styles.paymentCol, { alignItems: "flex-end" }]}>
             <Text style={styles.paymentLineStrong}>Due Date: {data.dueDate}</Text>

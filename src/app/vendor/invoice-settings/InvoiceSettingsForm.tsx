@@ -19,11 +19,13 @@ export function InvoiceSettingsForm({
   currentWatermark,
   currentFooter,
   hasLogo,
+  hasSignature,
 }: {
   currentTemplate: InvoiceTemplate;
   currentWatermark: string;
   currentFooter: string;
   hasLogo: boolean;
+  hasSignature: boolean;
 }) {
   const [state, formAction, pending] = useActionState(updateInvoiceSettings, initialState);
   const [template, setTemplate] = useState<InvoiceTemplate>(currentTemplate);
@@ -110,6 +112,21 @@ export function InvoiceSettingsForm({
           className="block w-full rounded-[11px] border border-white/10 bg-black/30 text-sm text-[#a09bb5] file:mr-4 file:cursor-pointer file:rounded-[9px] file:border-0 file:bg-[#7c5cff]/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#cabfff] hover:file:bg-[#7c5cff]/30"
         />
         <p className="mt-1 text-xs text-[#5c5770]">Shown at the top of your generated invoices. Save settings first, then refresh the preview to see it.</p>
+      </div>
+
+      <div>
+        <span className="g6-label">Signature {hasSignature ? "(currently set)" : ""}</span>
+        {hasSignature ? (
+          // eslint-disable-next-line @next/next/no-img-element -- dynamic API-served image, next/image not needed here
+          <img src="/api/vendor/signature" alt="Current signature" className="mb-2 h-16 rounded border border-white/10 bg-white/5 object-contain p-1" />
+        ) : null}
+        <input
+          name="signature"
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml"
+          className="block w-full rounded-[11px] border border-white/10 bg-black/30 text-sm text-[#a09bb5] file:mr-4 file:cursor-pointer file:rounded-[9px] file:border-0 file:bg-[#7c5cff]/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#cabfff] hover:file:bg-[#7c5cff]/30"
+        />
+        <p className="mt-1 text-xs text-[#5c5770]">A photo or scan of your signature, shown in the signature area of your chosen invoice template. Save settings first, then refresh the preview to see it.</p>
       </div>
 
       <label className="block">

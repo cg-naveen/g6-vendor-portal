@@ -42,6 +42,11 @@ const styles = StyleSheet.create({
 
   notes: { marginTop: 20, fontSize: 9, color: "#71717a" },
 
+  signBox: { marginTop: 24, alignItems: "flex-end" },
+  signImage: { width: 140, height: 50, objectFit: "contain", marginBottom: 4 },
+  signLine: { width: 160, borderTop: "0.5 solid #a1a1aa", paddingTop: 4, textAlign: "center" },
+  signText: { fontSize: 8, color: "#a1a1aa" },
+
   thankYou: { marginTop: 36, textAlign: "center", fontSize: 10, color: "#3f3f46" },
   footer: { position: "absolute", bottom: 36, left: 48, right: 48, textAlign: "center", fontSize: 8, color: "#a1a1aa" },
   watermark: { position: "absolute", top: "45%", left: 0, right: 0, textAlign: "center", fontSize: 48, color: "#f4f4f5", opacity: 0.8, transform: "rotate(-30deg)" },
@@ -93,6 +98,7 @@ export function MinimalInvoice({ data }: { data: InvoicePdfData }) {
           <View style={{ width: "58%" }}>
             <Text style={styles.value}>{data.billToName}</Text>
             {data.billToAddress ? <Text style={styles.value}>{data.billToAddress}</Text> : null}
+            {data.billToEmail ? <Text style={styles.value}>{data.billToEmail}</Text> : null}
           </View>
           <View style={{ width: "38%", textAlign: "right" }}>
             <Text style={styles.label}>Contact</Text>
@@ -129,10 +135,10 @@ export function MinimalInvoice({ data }: { data: InvoicePdfData }) {
           <Text style={styles.label}>Payment Details</Text>
           <View style={styles.paymentBox}>
             <Text style={styles.paymentLine}>Bank Name: {data.payment.bankName}</Text>
+            <Text style={styles.paymentLine}>Account Holder Name: {data.payment.accountHolderName}</Text>
             <Text style={styles.paymentLine}>Account Number: {data.payment.accountNumber}</Text>
             {data.payment.ifsc ? <Text style={styles.paymentLine}>IFSC: {data.payment.ifsc}</Text> : null}
             <Text style={styles.paymentLine}>SWIFT: {data.payment.swift}</Text>
-            <Text style={styles.paymentLine}>Bank Address: {data.payment.bankAddress}</Text>
           </View>
         </View>
 
@@ -142,6 +148,13 @@ export function MinimalInvoice({ data }: { data: InvoicePdfData }) {
             <Text>{data.notes}</Text>
           </View>
         ) : null}
+
+        <View style={styles.signBox}>
+          {data.signatureDataUri ? <Image src={data.signatureDataUri} style={styles.signImage} /> : null}
+          <View style={styles.signLine}>
+            <Text style={styles.signText}>Authorized Signature</Text>
+          </View>
+        </View>
 
         <Text style={styles.thankYou}>Thank you for your business!</Text>
 

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getOrgSettings } from "@/lib/orgSettings";
 import { renderInvoicePdf } from "@/lib/pdf/render";
-import { vendorDisplayName, vendorAddress, logoToDataUri } from "@/lib/invoice";
+import { vendorDisplayName, vendorAddress, logoToDataUri, signatureToDataUri } from "@/lib/invoice";
+import { formatInvoiceNumber } from "@/lib/invoiceNumber";
 import type { InvoicePdfData, InvoiceLineItemView } from "@/lib/pdf/types";
 import type { InvoiceTemplate } from "@prisma/client";
 
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   dueDate.setDate(dueDate.getDate() + 14);
 
   const data: InvoicePdfData = {
-    invoiceNumber: "INV-PREVIEW",
+    invoiceNumber: formatInvoiceNumber(vendor.invoiceSequence + 1),
     issueDate: dateFormat.format(new Date()),
     dueDate: dateFormat.format(dueDate),
     vendorDisplayName: vendorDisplayName(vendor) || "Your Business Name",
@@ -48,16 +49,18 @@ export async function GET(req: NextRequest) {
     vendorPhone: vendor.phone,
     billToName: orgSettings.companyName,
     billToAddress: orgSettings.address ?? undefined,
+    billToEmail: orgSettings.email,
     lineItems: SAMPLE_LINE_ITEMS,
     total: total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     payment: {
       bankName: vendor.bankName || "Sample Bank",
       accountNumber: vendor.accountNumber || "0000000000",
+      accountHolderName: vendor.accountHolderName || vendorDisplayName(vendor) || "Sample Account Holder",
       ifsc: vendor.ifsc,
       swift: vendor.swift || "SAMPLEXX",
-      bankAddress: vendor.bankAddress || "Sample bank address",
     },
     logoDataUri: await logoToDataUri(vendor),
+    signatureDataUri: await signatureToDataUri(vendor),
     watermarkText,
     footerText,
     notes: "This is a sample preview generated with placeholder line items.",

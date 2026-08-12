@@ -2,13 +2,33 @@ import { z } from "zod";
 
 const req = (label: string) => z.string().trim().min(1, `${label} is required`);
 
-export const bankSchema = z.object({
-  bankName: req("Bank name"),
-  accountNumber: req("Account number"),
-  ifsc: z.string().trim().optional(),
-  swift: req("SWIFT code"),
-  bankAddress: req("Bank address"),
+export const homeAddressSchema = z.object({
+  homeAddressLine1: req("Home address line 1"),
+  homeAddressLine2: z.string().trim().optional(),
+  homeCity: req("Home city"),
+  homePostcode: req("Home postcode"),
+  homeState: req("Home state"),
+  homeCountry: req("Home country"),
 });
+
+export const bankAddressSchema = z.object({
+  bankAddressLine1: req("Bank address line 1"),
+  bankAddressLine2: z.string().trim().optional(),
+  bankCity: req("Bank city"),
+  bankPostcode: req("Bank postcode"),
+  bankState: req("Bank state"),
+  bankCountry: req("Bank country"),
+});
+
+export const bankSchema = z
+  .object({
+    bankName: req("Bank name"),
+    accountNumber: req("Account number"),
+    accountHolderName: req("Account holder name"),
+    ifsc: z.string().trim().optional(),
+    swift: req("SWIFT code"),
+  })
+  .merge(bankAddressSchema);
 
 export const commonVendorSchema = z.object({
   vendorEmail: req("Vendor email").email("Enter a valid email"),
@@ -36,10 +56,10 @@ export const individualRegistrationSchema = z
   .object({
     type: z.literal("INDIVIDUAL"),
     vendorName: req("Vendor name"),
-    homeAddress: req("Vendor home address"),
   })
   .merge(commonVendorSchema)
-  .merge(bankSchema);
+  .merge(bankSchema)
+  .merge(homeAddressSchema);
 
 export const registrationSchema = z.discriminatedUnion("type", [
   businessRegistrationSchema,
@@ -69,7 +89,12 @@ export const adminEditVendorSchema = z
     contactPersonEmail: z.string().trim().optional(),
     contactPersonPhone: z.string().trim().optional(),
     vendorName: z.string().trim().optional(),
-    homeAddress: z.string().trim().optional(),
+    homeAddressLine1: z.string().trim().optional(),
+    homeAddressLine2: z.string().trim().optional(),
+    homeCity: z.string().trim().optional(),
+    homePostcode: z.string().trim().optional(),
+    homeState: z.string().trim().optional(),
+    homeCountry: z.string().trim().optional(),
   })
   .merge(
     z.object({

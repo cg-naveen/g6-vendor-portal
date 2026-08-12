@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { vendorDisplayName } from "@/lib/invoice";
+import { vendorDisplayName, formatStructuredAddress } from "@/lib/invoice";
 import { updateBillStatus } from "@/actions/bills";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
 import { MarkBillPaidForm, MarkInvoicePaidForm } from "./MarkPaidForms";
@@ -53,7 +53,18 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
               ) : (
                 <>
                   <Detail label="Vendor Name" value={vendor.vendorName} />
-                  <Detail label="Home Address" value={vendor.homeAddress} full />
+                  <Detail
+                    label="Home Address"
+                    value={formatStructuredAddress({
+                      line1: vendor.homeAddressLine1,
+                      line2: vendor.homeAddressLine2,
+                      city: vendor.homeCity,
+                      postcode: vendor.homePostcode,
+                      state: vendor.homeState,
+                      country: vendor.homeCountry,
+                    })}
+                    full
+                  />
                 </>
               )}
               <Detail label="Vendor Email" value={vendor.vendorEmail} />
@@ -69,10 +80,22 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
             <h2 className="g6-section-label mb-4">Bank Details</h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
               <Detail label="Bank Name" value={vendor.bankName} />
+              <Detail label="Account Holder Name" value={vendor.accountHolderName} />
               <Detail label="Account Number" value={vendor.accountNumber} />
               <Detail label="IFSC" value={vendor.ifsc} />
               <Detail label="SWIFT" value={vendor.swift} />
-              <Detail label="Bank Address" value={vendor.bankAddress} full />
+              <Detail
+                label="Bank Address"
+                value={formatStructuredAddress({
+                  line1: vendor.bankAddressLine1,
+                  line2: vendor.bankAddressLine2,
+                  city: vendor.bankCity,
+                  postcode: vendor.bankPostcode,
+                  state: vendor.bankState,
+                  country: vendor.bankCountry,
+                })}
+                full
+              />
             </dl>
           </section>
 

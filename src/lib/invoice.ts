@@ -4,7 +4,7 @@ import { readFile } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdf } from "@/lib/pdf/render";
 import { savePdf, resolveUploadPath } from "@/lib/storage";
-import { generateInvoiceNumber } from "@/lib/invoiceNumber";
+import { formatInvoiceNumber } from "@/lib/invoiceNumber";
 import { getOrgSettings } from "@/lib/orgSettings";
 import type { InvoicePdfData, InvoiceLineItemView } from "@/lib/pdf/types";
 import type { Vendor } from "@prisma/client";
@@ -36,13 +36,47 @@ export async function logoToDataUri(vendor: Vendor): Promise<string | null> {
   }
 }
 
+export async function signatureToDataUri(vendor: Vendor): Promise<string | null> {
+  if (!vendor.signatureUrl) return null;
+  try {
+    const filePath = resolveUploadPath(vendor.signatureUrl);
+    const buf = await readFile(filePath);
+    const ext = path.extname(filePath).replace(".", "").toLowerCase();
+    const mime = ext === "png" ? "image/png" : ext === "svg" ? "image/svg+xml" : "image/jpeg";
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export function vendorDisplayName(vendor: Vendor): string {
   return vendor.type === "BUSINESS" ? vendor.companyName ?? "" : vendor.vendorName ?? "";
 }
 
+export function formatStructuredAddress(parts: {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  postcode?: string | null;
+  state?: string | null;
+  country?: string | null;
+}): string {
+  const cityLine = [parts.city, parts.postcode].filter(Boolean).join(" ");
+  return [parts.line1, parts.line2, cityLine, parts.state, parts.country].filter(Boolean).join(", ");
+}
+
 export function vendorAddress(vendor: Vendor): string {
-  const line = vendor.type === "BUSINESS" ? vendor.businessAddress ?? "" : vendor.homeAddress ?? "";
-  return [line, vendor.city, vendor.state, vendor.country].filter(Boolean).join(", ");
+  if (vendor.type === "BUSINESS") {
+    return [vendor.businessAddress, vendor.city, vendor.state, vendor.country].filter(Boolean).join(", ");
+  }
+  return formatStructuredAddress({
+    line1: vendor.homeAddressLine1,
+    line2: vendor.homeAddressLine2,
+    city: vendor.homeCity,
+    postcode: vendor.homePostcode,
+    state: vendor.homeState,
+    country: vendor.homeCountry,
+  });
 }
 
 /**
@@ -58,27 +92,34 @@ export async function createInvoiceSubmission(params: {
   const { vendor, source, notes, lineItems, isRecurring } = params;
 
   const total = lineItems.reduce((sum, li) => sum + li.quantity * li.rate, 0);
-  const invoiceNumber = generateInvoiceNumber();
 
-  const submission = await prisma.invoiceSubmission.create({
-    data: {
-      vendorId: vendor.id,
-      invoiceNumber,
-      source,
-      template: vendor.invoiceTemplate,
-      notes: notes || null,
-      isRecurring: isRecurring ?? false,
-      lineItems: {
-        create: lineItems.map((li) => ({
-          date: li.date,
-          description: li.description,
-          quantity: li.quantity,
-          rate: li.rate,
-          amount: li.quantity * li.rate,
-        })),
+  const submission = await prisma.$transaction(async (tx) => {
+    const updatedVendor = await tx.vendor.update({
+      where: { id: vendor.id },
+      data: { invoiceSequence: { increment: 1 } },
+    });
+    const invoiceNumber = formatInvoiceNumber(updatedVendor.invoiceSequence);
+
+    return tx.invoiceSubmission.create({
+      data: {
+        vendorId: vendor.id,
+        invoiceNumber,
+        source,
+        template: vendor.invoiceTemplate,
+        notes: notes || null,
+        isRecurring: isRecurring ?? false,
+        lineItems: {
+          create: lineItems.map((li) => ({
+            date: li.date,
+            description: li.description,
+            quantity: li.quantity,
+            rate: li.rate,
+            amount: li.quantity * li.rate,
+          })),
+        },
       },
-    },
-    include: { lineItems: true },
+      include: { lineItems: true },
+    });
   });
 
   const pdfPath = await regenerateInvoicePdf(submission.id);
@@ -120,16 +161,18 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
     vendorPhone: vendor.phone,
     billToName: orgSettings.companyName,
     billToAddress: orgSettings.address ?? undefined,
+    billToEmail: orgSettings.email,
     lineItems: lineItemsView,
     total: fmt(total),
     payment: {
       bankName: vendor.bankName,
       accountNumber: vendor.accountNumber,
+      accountHolderName: vendor.accountHolderName ?? vendorDisplayName(vendor),
       ifsc: vendor.ifsc,
       swift: vendor.swift,
-      bankAddress: vendor.bankAddress,
     },
     logoDataUri: await logoToDataUri(vendor),
+    signatureDataUri: await signatureToDataUri(vendor),
     watermarkText: vendor.watermarkText,
     footerText: vendor.footerText,
     notes: submission.notes,

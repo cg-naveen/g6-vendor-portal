@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createVendorManually } from "@/actions/admin";
 import type { FormState } from "@/actions/admin";
 import { FormField } from "@/components/FormField";
+import { AddressFields } from "@/components/AddressFields";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 const initialState: FormState = {};
@@ -56,7 +57,8 @@ export function AddVendorForm() {
         <section className="space-y-4">
           <h2 className="g6-section-label">Vendor Details</h2>
           <FormField label="Vendor Name" name="vendorName" required error={errors.vendorName} />
-          <FormField label="Vendor Home Address" name="homeAddress" as="textarea" required error={errors.homeAddress} />
+          <h3 className="g6-label">Home Address</h3>
+          <AddressFields prefix="home" errors={errors} />
         </section>
       )}
 
@@ -83,12 +85,14 @@ export function AddVendorForm() {
       <section className="space-y-4">
         <h2 className="g6-section-label">Bank Details</h2>
         <FormField label="Bank Name" name="bankName" required error={errors.bankName} />
+        <FormField label="Account Holder Name" name="accountHolderName" required error={errors.accountHolderName} />
         <FormField label="Account Number" name="accountNumber" required error={errors.accountNumber} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="IFSC" name="ifsc" error={errors.ifsc} />
           <FormField label="SWIFT" name="swift" required error={errors.swift} />
         </div>
-        <FormField label="Bank Address" name="bankAddress" as="textarea" required error={errors.bankAddress} />
+        <h3 className="g6-label">Bank Address</h3>
+        <AddressFields prefix="bank" errors={errors} />
       </section>
 
       <section className="space-y-4">

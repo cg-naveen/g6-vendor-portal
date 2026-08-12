@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateVendorProfile, type FormState } from "@/actions/profile";
 import { FormField } from "@/components/FormField";
+import { AddressFields } from "@/components/AddressFields";
 import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 
 export type VendorProfileFields = {
@@ -15,12 +16,23 @@ export type VendorProfileFields = {
   contactPersonName: string | null;
   contactPersonEmail: string | null;
   contactPersonPhone: string | null;
-  homeAddress: string | null;
+  homeAddressLine1: string | null;
+  homeAddressLine2: string | null;
+  homeCity: string | null;
+  homePostcode: string | null;
+  homeState: string | null;
+  homeCountry: string | null;
   bankName: string;
   accountNumber: string;
+  accountHolderName: string | null;
   ifsc: string | null;
   swift: string;
-  bankAddress: string;
+  bankAddressLine1: string | null;
+  bankAddressLine2: string | null;
+  bankCity: string | null;
+  bankPostcode: string | null;
+  bankState: string | null;
+  bankCountry: string | null;
 };
 
 const initialState: FormState = {};
@@ -54,19 +66,43 @@ export function VendorProfileForm({ vendor }: { vendor: VendorProfileFields }) {
       ) : (
         <section className="space-y-4">
           <h2 className="g6-section-label">Address</h2>
-          <FormField label="Home Address" name="homeAddress" as="textarea" defaultValue={vendor.homeAddress ?? ""} />
+          <h3 className="g6-label">Home Address</h3>
+          <AddressFields
+            prefix="home"
+            required={false}
+            defaultValues={{
+              line1: vendor.homeAddressLine1,
+              line2: vendor.homeAddressLine2,
+              city: vendor.homeCity,
+              postcode: vendor.homePostcode,
+              state: vendor.homeState,
+              country: vendor.homeCountry,
+            }}
+          />
         </section>
       )}
 
       <section className="space-y-4">
         <h2 className="g6-section-label">Bank Details</h2>
         <FormField label="Bank Name" name="bankName" required defaultValue={vendor.bankName} />
+        <FormField label="Account Holder Name" name="accountHolderName" required defaultValue={vendor.accountHolderName ?? ""} />
         <FormField label="Account Number" name="accountNumber" required defaultValue={vendor.accountNumber} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="IFSC" name="ifsc" defaultValue={vendor.ifsc ?? ""} />
           <FormField label="SWIFT" name="swift" required defaultValue={vendor.swift} />
         </div>
-        <FormField label="Bank Address" name="bankAddress" as="textarea" required defaultValue={vendor.bankAddress} />
+        <h3 className="g6-label">Bank Address</h3>
+        <AddressFields
+          prefix="bank"
+          defaultValues={{
+            line1: vendor.bankAddressLine1,
+            line2: vendor.bankAddressLine2,
+            city: vendor.bankCity,
+            postcode: vendor.bankPostcode,
+            state: vendor.bankState,
+            country: vendor.bankCountry,
+          }}
+        />
       </section>
 
       <button type="submit" disabled={pending} className="g6-btn g6-btn-primary">
