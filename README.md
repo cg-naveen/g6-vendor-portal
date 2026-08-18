@@ -101,4 +101,6 @@ There is no SMTP/email provider wired up. `/forgot-password` generates a one-tim
 - No email/SMTP is wired up — vendors don't get notified when approved/rejected, and password reset links are shown on-screen rather than emailed (see above).
 - Admin accounts are seeded only (no self-registration or admin invite flow).
 - Currency is unit-less (plain numeric formatting); add a currency field if G6 needs multi-currency support.
-- `CRON_SECRET` in `.env` protects the recurring-billing endpoint — set a strong value and configure your host's scheduler (Vercel Cron, a server crontab, GitHub Actions, etc.) to `POST /api/cron/generate-recurring-invoices` with header `x-cron-secret: <value>` on whatever cadence you want it checked (daily is reasonable since it only bills vendors whose due date has arrived).
+- `CRON_SECRET` in `.env` protects the recurring-billing endpoint. A GitHub Actions workflow (`.github/workflows/recurring-invoices.yml`) hits `POST /api/cron/generate-recurring-invoices` daily at 01:00 UTC (and can be run on demand via "Run workflow"). To enable it, set in the repo's Settings → Secrets and variables → Actions:
+  - Variable `APP_URL` — the deployed app's base URL (e.g. `https://vendor.g6labs.asia`), no trailing slash.
+  - Secret `CRON_SECRET` — must match the value in the deployment's `.env`.
