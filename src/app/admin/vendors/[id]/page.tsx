@@ -8,6 +8,7 @@ import { MarkBillPaidForm, MarkInvoicePaidForm } from "./MarkPaidForms";
 import { AutoBillingForm } from "./AutoBillingForm";
 import { ContractInfoForm } from "./ContractInfoForm";
 import { VendorStatusActions } from "./VendorStatusActions";
+import { VendorExportButton } from "./VendorExportButton";
 
 export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +22,66 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       : Promise.resolve([]),
   ]);
 
+  const exportPayload = {
+    vendor: {
+      type: vendor.type,
+      status: vendor.status,
+      accountType: vendor.accountType,
+      companyName: vendor.companyName,
+      companyRegNumber: vendor.companyRegNumber,
+      businessAddress: vendor.businessAddress,
+      contactPersonName: vendor.contactPersonName,
+      contactPersonEmail: vendor.contactPersonEmail,
+      contactPersonPhone: vendor.contactPersonPhone,
+      vendorName: vendor.vendorName,
+      homeAddressLine1: vendor.homeAddressLine1,
+      homeAddressLine2: vendor.homeAddressLine2,
+      homeCity: vendor.homeCity,
+      homePostcode: vendor.homePostcode,
+      homeState: vendor.homeState,
+      homeCountry: vendor.homeCountry,
+      vendorEmail: vendor.vendorEmail,
+      phone: vendor.phone,
+      country: vendor.country,
+      city: vendor.city,
+      state: vendor.state,
+      createdAt: vendor.createdAt.toISOString(),
+      bankName: vendor.bankName,
+      accountHolderName: vendor.accountHolderName,
+      accountNumber: vendor.accountNumber,
+      ifsc: vendor.ifsc,
+      swift: vendor.swift,
+      bankAddressLine1: vendor.bankAddressLine1,
+      bankAddressLine2: vendor.bankAddressLine2,
+      bankCity: vendor.bankCity,
+      bankPostcode: vendor.bankPostcode,
+      bankState: vendor.bankState,
+      bankCountry: vendor.bankCountry,
+      contractInfo: vendor.contractInfo,
+      autoBillingEnabled: vendor.autoBillingEnabled,
+      recurringDescription: vendor.recurringDescription,
+      recurringAmount: vendor.recurringAmount ? Number(vendor.recurringAmount) : null,
+      billingDayOfMonth: vendor.billingDayOfMonth,
+      nextBillingDate: vendor.nextBillingDate?.toISOString() ?? null,
+      lastBilledAt: vendor.lastBilledAt?.toISOString() ?? null,
+    },
+    bills: bills.map((bill) => ({
+      fileName: bill.fileName,
+      submittedAt: bill.submittedAt.toISOString(),
+      amount: Number(bill.amount),
+      status: bill.status,
+      paymentStatus: bill.paymentStatus,
+    })),
+    submissions: submissions.map((submission) => ({
+      invoiceNumber: submission.invoiceNumber,
+      createdAt: submission.createdAt.toISOString(),
+      source: submission.source,
+      paymentStatus: submission.paymentStatus,
+      isRecurring: submission.isRecurring,
+      total: submission.lineItems.reduce((sum, line) => sum + Number(line.amount), 0),
+    })),
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -29,6 +90,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           <p className="g6-page-subtitle mt-1">{vendor.type === "BUSINESS" ? "Business Vendor" : "Individual Vendor"}</p>
         </div>
         <div className="flex items-center gap-3">
+          <VendorExportButton payload={exportPayload} fileName={`${vendorDisplayName(vendor).replace(/[^\w.-]+/g, "_") || "vendor"}-export`} />
           <Link href={`/admin/vendors/${vendor.id}/edit`} className="g6-btn g6-btn-secondary g6-btn-sm">
             Edit Vendor
           </Link>
@@ -69,9 +131,9 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
               )}
               <Detail label="Vendor Email" value={vendor.vendorEmail} />
               <Detail label="Phone" value={vendor.phone} />
-              <Detail label="Country" value={vendor.country} />
-              <Detail label="City" value={vendor.city} />
-              <Detail label="State" value={vendor.state} />
+              <Detail label="Contact Country" value={vendor.country} />
+              <Detail label="Contact City" value={vendor.city} />
+              <Detail label="Contact State" value={vendor.state} />
               <Detail label="Registered" value={vendor.createdAt.toLocaleDateString()} />
             </dl>
           </section>
@@ -112,6 +174,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
               autoBillingEnabled={vendor.autoBillingEnabled}
               recurringDescription={vendor.recurringDescription ?? ""}
               recurringAmount={vendor.recurringAmount ? Number(vendor.recurringAmount) : null}
+              billingDayOfMonth={vendor.billingDayOfMonth}
               nextBillingDate={vendor.nextBillingDate ? vendor.nextBillingDate.toISOString() : null}
               lastBilledAt={vendor.lastBilledAt ? vendor.lastBilledAt.toISOString() : null}
             />

@@ -130,6 +130,7 @@ model Vendor {
   autoBillingEnabled   Boolean   @default(false)
   recurringDescription String?
   recurringAmount      Decimal?  @db.Decimal(14, 2)
+  billingDayOfMonth    Int?
   nextBillingDate      DateTime?
   lastBilledAt         DateTime?
 

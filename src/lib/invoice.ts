@@ -8,6 +8,9 @@ import { formatInvoiceNumber } from "@/lib/invoiceNumber";
 import { getOrgSettings } from "@/lib/orgSettings";
 import type { InvoicePdfData, InvoiceLineItemView } from "@/lib/pdf/types";
 import type { Vendor } from "@prisma/client";
+import { formatStructuredAddress, vendorDisplayName } from "@/lib/vendorFormatting";
+
+export { formatStructuredAddress, vendorDisplayName };
 
 const numberFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit" });
@@ -47,22 +50,6 @@ export async function signatureToDataUri(vendor: Vendor): Promise<string | null>
   } catch {
     return null;
   }
-}
-
-export function vendorDisplayName(vendor: Vendor): string {
-  return vendor.type === "BUSINESS" ? vendor.companyName ?? "" : vendor.vendorName ?? "";
-}
-
-export function formatStructuredAddress(parts: {
-  line1?: string | null;
-  line2?: string | null;
-  city?: string | null;
-  postcode?: string | null;
-  state?: string | null;
-  country?: string | null;
-}): string {
-  const cityLine = [parts.city, parts.postcode].filter(Boolean).join(" ");
-  return [parts.line1, parts.line2, cityLine, parts.state, parts.country].filter(Boolean).join(", ");
 }
 
 export function vendorAddress(vendor: Vendor): string {

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/currentUser";
 import { createInvoiceSubmission, regenerateInvoicePdf } from "@/lib/invoice";
 import { taskSubmissionSchema, adminCreateVendorSchema, adminEditVendorSchema } from "@/lib/validation";
-import { runDueRecurringBilling } from "@/lib/recurringBilling";
+import { runDueRecurringBilling, buildAutoBillingUpdate, runRecurringBillingForVendor } from "@/lib/recurringBilling";
 import { hashPassword } from "@/lib/auth";
 import { sanitizeHtml } from "@/lib/sanitize";
 
@@ -240,10 +240,9 @@ const autoBillingSchema = z
     recurringDescription: z.string().trim().default(""),
     recurringAmount: z.string().trim().default(""),
     nextBillingDate: z.string().trim().default(""),
+    billingDayOfMonth: z.string().trim().default(""),
   })
   .superRefine((data, ctx) => {
-    // Only enforce the recurring fields when auto-billing is actually turned on,
-    // so an admin can disable it (or save an empty draft) without validation errors.
     if (!data.autoBillingEnabled) return;
     if (!data.recurringDescription) {
       ctx.addIssue({ code: "custom", path: ["recurringDescription"], message: "Description is required when auto-billing is enabled" });
@@ -253,7 +252,11 @@ const autoBillingSchema = z
       ctx.addIssue({ code: "custom", path: ["recurringAmount"], message: "Enter a recurring amount greater than 0" });
     }
     if (!data.nextBillingDate) {
-      ctx.addIssue({ code: "custom", path: ["nextBillingDate"], message: "Next billing date is required" });
+      ctx.addIssue({ code: "custom", path: ["nextBillingDate"], message: "First billing date is required" });
+    }
+    const billingDay = Number(data.billingDayOfMonth);
+    if (!data.billingDayOfMonth || Number.isNaN(billingDay) || billingDay < 1 || billingDay > 31) {
+      ctx.addIssue({ code: "custom", path: ["billingDayOfMonth"], message: "Enter a billing day between 1 and 31" });
     }
   });
 
@@ -360,27 +363,26 @@ export async function updateAutoBilling(_prevState: FormState, formData: FormDat
   }
 
   const parsed = autoBillingSchema.safeParse({
-    // An unchecked checkbox is absent from FormData (null), so normalise to a boolean here.
     autoBillingEnabled: formData.get("autoBillingEnabled") === "on",
     recurringDescription: formData.get("recurringDescription") ?? "",
     recurringAmount: formData.get("recurringAmount") ?? "",
     nextBillingDate: formData.get("nextBillingDate") ?? "",
+    billingDayOfMonth: formData.get("billingDayOfMonth") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the auto-billing settings." };
   }
 
-  const { autoBillingEnabled, recurringDescription, recurringAmount, nextBillingDate } = parsed.data;
+  const billingData = buildAutoBillingUpdate(parsed.data);
 
-  await prisma.vendor.update({
+  const updated = await prisma.vendor.update({
     where: { id: vendorId },
-    data: {
-      autoBillingEnabled,
-      recurringDescription: recurringDescription || null,
-      recurringAmount: recurringAmount ? Number(recurringAmount) : null,
-      nextBillingDate: nextBillingDate ? new Date(nextBillingDate) : null,
-    },
+    data: billingData,
   });
+
+  if (updated.autoBillingEnabled) {
+    await runRecurringBillingForVendor(updated);
+  }
 
   revalidatePath(`/admin/vendors/${vendorId}`);
   return { success: true };
@@ -400,5 +402,5 @@ export async function runBillingNowAction(_prevState: RunBillingState): Promise<
   if (result.generated === 0) {
     return { message: "No contract vendors are due for billing today." };
   }
-  return { message: `Generated ${result.generated} invoice(s) for: ${result.vendorNames.join(", ")}` };
+  return { message: `Generated ${result.generated} invoice batch(es)${result.vendorNames.length ? ` for: ${result.vendorNames.join(", ")}` : ""}.` };
 }
