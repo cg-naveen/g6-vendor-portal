@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { resolveUploadPath } from "@/lib/storage";
+import { readUploadedFile } from "@/lib/storage";
 
 export async function GET() {
   const session = await getSession();
@@ -15,9 +14,8 @@ export async function GET() {
   if (!vendor?.logoUrl) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {
-    const filePath = resolveUploadPath(vendor.logoUrl);
-    const data = await readFile(filePath);
-    const ext = path.extname(filePath).replace(".", "").toLowerCase();
+    const data = await readUploadedFile(vendor.logoUrl);
+    const ext = path.extname(vendor.logoUrl).replace(".", "").toLowerCase();
     const mime = ext === "png" ? "image/png" : ext === "svg" ? "image/svg+xml" : "image/jpeg";
     return new NextResponse(new Uint8Array(data), { headers: { "Content-Type": mime } });
   } catch {

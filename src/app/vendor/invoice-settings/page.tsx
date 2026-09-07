@@ -23,7 +23,7 @@ export default async function InvoiceSettingsPage() {
       </div>
       <div className="g6-card p-6">
         <h2 className="g6-section-label mb-3">Invoice Numbering</h2>
-        <NextInvoiceNumberForm nextInvoiceNumber={vendor.invoiceSequence + 1} />
+        <NextInvoiceNumberForm nextInvoiceNumber={vendor.invoiceSequence + 1} vendorCode={vendor.vendorCode} />
       </div>
     </div>
   );

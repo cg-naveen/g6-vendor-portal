@@ -10,6 +10,7 @@ import { taskSubmissionSchema, adminCreateVendorSchema, adminEditVendorSchema } 
 import { runDueRecurringBilling, buildAutoBillingUpdate, runRecurringBillingForVendor } from "@/lib/recurringBilling";
 import { hashPassword } from "@/lib/auth";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { generateUniqueVendorCode } from "@/lib/vendorCode";
 
 export type FormState = {
   error?: string;
@@ -40,6 +41,7 @@ export async function createVendorManually(_prevState: FormState, formData: Form
   }
 
   const passwordHash = await hashPassword(data.password);
+  const vendorCode = await generateUniqueVendorCode();
 
   const vendor = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -49,6 +51,7 @@ export async function createVendorManually(_prevState: FormState, formData: Form
     return tx.vendor.create({
       data: {
         userId: user.id,
+        vendorCode,
         type: data.type,
         status: "APPROVED",
         accountType: data.accountType,

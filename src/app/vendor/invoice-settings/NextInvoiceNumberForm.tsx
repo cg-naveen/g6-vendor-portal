@@ -7,7 +7,7 @@ import { formatInvoiceNumber } from "@/lib/invoiceNumber";
 
 const initialState: FormState = {};
 
-export function NextInvoiceNumberForm({ nextInvoiceNumber }: { nextInvoiceNumber: number }) {
+export function NextInvoiceNumberForm({ nextInvoiceNumber, vendorCode }: { nextInvoiceNumber: number; vendorCode: string }) {
   const [state, formAction, pending] = useActionState(updateNextInvoiceNumber, initialState);
   const [preview, setPreview] = useState(nextInvoiceNumber);
 
@@ -17,8 +17,11 @@ export function NextInvoiceNumberForm({ nextInvoiceNumber }: { nextInvoiceNumber
       {state.success ? <SuccessBanner>Invoice numbering updated.</SuccessBanner> : null}
 
       <p className="text-xs text-[#8781a0]">
-        Every invoice you generate uses the fixed prefix <span className="font-mono-g6">INV-{"{YY}"}-</span>, followed by a number that
-        increments automatically. If you need to align with your own records, fix the next number below.
+        Every invoice you generate uses the fixed prefix{" "}
+        <span className="font-mono-g6">
+          INV-{"{YY}"}-{vendorCode}-
+        </span>
+        , followed by a number that increments automatically. If you need to align with your own records, fix the next number below.
       </p>
 
       <label className="block">
@@ -35,7 +38,7 @@ export function NextInvoiceNumberForm({ nextInvoiceNumber }: { nextInvoiceNumber
       </label>
 
       <p className="text-xs text-[#5c5770]">
-        Your next invoice will be numbered <span className="font-mono-g6 text-[#cabfff]">{formatInvoiceNumber(preview)}</span>.
+        Your next invoice will be numbered <span className="font-mono-g6 text-[#cabfff]">{formatInvoiceNumber(preview, vendorCode)}</span>.
       </p>
 
       <button type="submit" disabled={pending} className="g6-btn g6-btn-secondary g6-btn-sm">

@@ -38,12 +38,12 @@ export async function createBill(_prevState: FormState, formData: FormData): Pro
     return { error: "Please attach an invoice file.", fieldErrors: { invoiceFile: "Invoice file is required" } };
   }
 
-  const { relativePath, fileName } = await saveUploadedFile(file, `bills/${vendor.id}`);
+  const { url, fileName } = await saveUploadedFile(file, `bills/${vendor.id}`);
 
   await prisma.bill.create({
     data: {
       vendorId: vendor.id,
-      invoiceFile: relativePath,
+      invoiceFile: url,
       fileName,
       amount: parsed.data.amount,
       description: parsed.data.description || null,

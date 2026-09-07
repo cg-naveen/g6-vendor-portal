@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { createSession, destroySession } from "@/lib/session";
 import { registrationSchema, loginSchema } from "@/lib/validation";
+import { generateUniqueVendorCode } from "@/lib/vendorCode";
 
 export type FormState = {
   error?: string;
@@ -36,6 +37,7 @@ export async function registerVendor(_prevState: FormState, formData: FormData):
   }
 
   const passwordHash = await hashPassword(data.password);
+  const vendorCode = await generateUniqueVendorCode();
 
   const vendor = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -49,6 +51,7 @@ export async function registerVendor(_prevState: FormState, formData: FormData):
     return tx.vendor.create({
       data: {
         userId: user.id,
+        vendorCode,
         type: data.type,
         vendorEmail: data.vendorEmail,
         phone: data.phone,

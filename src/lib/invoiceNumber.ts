@@ -1,11 +1,11 @@
 /**
- * Fixed format: INV-{2-digit year}-{4-digit auto-incrementing per-vendor sequence}.
+ * Fixed format: INV-{2-digit year}-{vendor code}-{4-digit auto-incrementing per-vendor sequence}.
  * The sequence itself is vendor-scoped (Vendor.invoiceSequence) so it can be reset or
- * fixed by the vendor in Invoice Settings; the "INV-{YY}-" prefix is not configurable.
+ * fixed by the vendor in Invoice Settings; the "INV-{YY}-{vendorCode}-" prefix is not configurable.
  */
-export function formatInvoiceNumber(sequence: number, date: Date = new Date()): string {
+export function formatInvoiceNumber(sequence: number, vendorCode: string, date: Date = new Date()): string {
   const yy = String(date.getFullYear()).slice(-2);
-  return `INV-${yy}-${String(sequence).padStart(4, "0")}`;
+  return `INV-${yy}-${vendorCode}-${String(sequence).padStart(4, "0")}`;
 }
 
 export function generateReceiptNumber(): string {

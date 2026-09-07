@@ -86,7 +86,7 @@ Visit `http://localhost:3000`. Register a vendor at `/register`, or sign in as a
 
 ## File Storage
 
-Uploaded bills, vendor logos, and generated invoice PDFs are stored on local disk under `UPLOAD_DIR` (default `./uploads`, gitignored). Files are served through authenticated API routes (`/api/bills/[id]/file`, `/api/invoices/[id]/pdf`, `/api/vendor/logo`) that check the requester owns the resource or is an admin. For a production deployment, swap `src/lib/storage.ts` for an object storage backend (e.g. S3) if persistent/scalable storage is required.
+Uploaded bills, vendor logos, signatures, and generated invoice/receipt PDFs are stored in [Vercel Blob](https://vercel.com/docs/vercel-blob) under `access: "private"` (requires `BLOB_READ_WRITE_TOKEN`, auto-provisioned when a Blob store is linked to the Vercel project). Files are served through authenticated API routes (`/api/bills/[id]/file`, `/api/invoices/[id]/pdf`, `/api/vendor/logo`, etc.) that check the requester owns the resource or is an admin, then stream the blob content back — the blob URL itself is never exposed to the client.
 
 ## Data Model
 

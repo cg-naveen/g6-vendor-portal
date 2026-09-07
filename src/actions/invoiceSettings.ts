@@ -35,15 +35,15 @@ export async function updateInvoiceSettings(_prevState: FormState, formData: For
   let logoUrl: string | undefined;
   const logoFile = formData.get("logo");
   if (logoFile instanceof File && logoFile.size > 0) {
-    const { relativePath } = await saveUploadedFile(logoFile, `logos/${vendor.id}`);
-    logoUrl = relativePath;
+    const { url } = await saveUploadedFile(logoFile, `logos/${vendor.id}`);
+    logoUrl = url;
   }
 
   let signatureUrl: string | undefined;
   const signatureFile = formData.get("signature");
   if (signatureFile instanceof File && signatureFile.size > 0) {
-    const { relativePath } = await saveUploadedFile(signatureFile, `signatures/${vendor.id}`);
-    signatureUrl = relativePath;
+    const { url } = await saveUploadedFile(signatureFile, `signatures/${vendor.id}`);
+    signatureUrl = url;
   }
 
   await prisma.vendor.update({

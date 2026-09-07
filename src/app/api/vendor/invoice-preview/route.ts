@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   dueDate.setDate(dueDate.getDate() + 14);
 
   const data: InvoicePdfData = {
-    invoiceNumber: formatInvoiceNumber(vendor.invoiceSequence + 1),
+    invoiceNumber: formatInvoiceNumber(vendor.invoiceSequence + 1, vendor.vendorCode),
     issueDate: dateFormat.format(new Date()),
     dueDate: dateFormat.format(dueDate),
     vendorDisplayName: vendorDisplayName(vendor) || "Your Business Name",

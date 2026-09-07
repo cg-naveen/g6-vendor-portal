@@ -1,9 +1,8 @@
 import "server-only";
 import path from "path";
-import { readFile } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdf } from "@/lib/pdf/render";
-import { savePdf, resolveUploadPath } from "@/lib/storage";
+import { savePdf, readUploadedFile } from "@/lib/storage";
 import { formatInvoiceNumber } from "@/lib/invoiceNumber";
 import { getOrgSettings } from "@/lib/orgSettings";
 import type { InvoicePdfData, InvoiceLineItemView } from "@/lib/pdf/types";
@@ -29,9 +28,8 @@ export type LineItemInput = {
 export async function logoToDataUri(vendor: Vendor): Promise<string | null> {
   if (!vendor.logoUrl) return null;
   try {
-    const filePath = resolveUploadPath(vendor.logoUrl);
-    const buf = await readFile(filePath);
-    const ext = path.extname(filePath).replace(".", "").toLowerCase();
+    const buf = await readUploadedFile(vendor.logoUrl);
+    const ext = path.extname(vendor.logoUrl).replace(".", "").toLowerCase();
     const mime = ext === "png" ? "image/png" : ext === "svg" ? "image/svg+xml" : "image/jpeg";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
@@ -42,9 +40,8 @@ export async function logoToDataUri(vendor: Vendor): Promise<string | null> {
 export async function signatureToDataUri(vendor: Vendor): Promise<string | null> {
   if (!vendor.signatureUrl) return null;
   try {
-    const filePath = resolveUploadPath(vendor.signatureUrl);
-    const buf = await readFile(filePath);
-    const ext = path.extname(filePath).replace(".", "").toLowerCase();
+    const buf = await readUploadedFile(vendor.signatureUrl);
+    const ext = path.extname(vendor.signatureUrl).replace(".", "").toLowerCase();
     const mime = ext === "png" ? "image/png" : ext === "svg" ? "image/svg+xml" : "image/jpeg";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
@@ -85,7 +82,7 @@ export async function createInvoiceSubmission(params: {
       where: { id: vendor.id },
       data: { invoiceSequence: { increment: 1 } },
     });
-    const invoiceNumber = formatInvoiceNumber(updatedVendor.invoiceSequence);
+    const invoiceNumber = formatInvoiceNumber(updatedVendor.invoiceSequence, updatedVendor.vendorCode);
 
     return tx.invoiceSubmission.create({
       data: {
@@ -167,12 +164,12 @@ export async function regenerateInvoicePdf(submissionId: string): Promise<string
 
   const buffer = await renderInvoicePdf(submission.template, data);
   const fileName = `${submission.invoiceNumber}.pdf`;
-  const relativePath = await savePdf(buffer, `invoices/${vendor.id}`, fileName);
+  const pdfUrl = await savePdf(buffer, `invoices/${vendor.id}`, fileName);
 
   await prisma.invoiceSubmission.update({
     where: { id: submission.id },
-    data: { pdfPath: relativePath },
+    data: { pdfPath: pdfUrl },
   });
 
-  return relativePath;
+  return pdfUrl;
 }

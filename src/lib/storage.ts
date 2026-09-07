@@ -1,37 +1,41 @@
 import "server-only";
-import { mkdir, writeFile } from "fs/promises";
+import { put, get, del } from "@vercel/blob";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.resolve("./uploads");
+/**
+ * All files live in Vercel Blob under `access: "private"` — the returned URL is not
+ * publicly fetchable, it must be read back via `get()` (which uses BLOB_READ_WRITE_TOKEN).
+ * This keeps the session-based auth checks in the API routes meaningful, and survives
+ * across serverless invocations/deploys (unlike local disk, which is ephemeral on Vercel).
+ */
 
-export async function saveUploadedFile(file: File, subDir: string): Promise<{ relativePath: string; fileName: string }> {
+export async function saveUploadedFile(file: File, subDir: string): Promise<{ url: string; fileName: string }> {
   const bytes = Buffer.from(await file.arrayBuffer());
   const ext = path.extname(file.name) || "";
-  const safeName = `${randomUUID()}${ext}`;
-  const targetDir = path.join(UPLOAD_DIR, subDir);
-  await mkdir(targetDir, { recursive: true });
-  const targetPath = path.join(targetDir, safeName);
-  await writeFile(targetPath, bytes);
-  return { relativePath: path.join(subDir, safeName), fileName: file.name };
+  const key = `${subDir}/${randomUUID()}${ext}`;
+  const blob = await put(key, bytes, { access: "private", contentType: file.type || undefined });
+  return { url: blob.url, fileName: file.name };
 }
 
 export async function savePdf(buffer: Buffer, subDir: string, fileName: string): Promise<string> {
-  const targetDir = path.join(UPLOAD_DIR, subDir);
-  await mkdir(targetDir, { recursive: true });
-  const targetPath = path.join(targetDir, fileName);
-  await writeFile(targetPath, buffer);
-  return path.join(subDir, fileName);
+  const key = `${subDir}/${fileName}`;
+  const blob = await put(key, buffer, {
+    access: "private",
+    contentType: "application/pdf",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+  return blob.url;
 }
 
-export function resolveUploadPath(relativePath: string): string {
-  const resolved = path.resolve(UPLOAD_DIR, relativePath);
-  if (!resolved.startsWith(UPLOAD_DIR)) {
-    throw new Error("Invalid file path");
-  }
-  return resolved;
+export async function readUploadedFile(url: string): Promise<Buffer> {
+  const result = await get(url, { access: "private" });
+  if (!result || result.statusCode !== 200) throw new Error("Blob not found");
+  const arrayBuffer = await new Response(result.stream).arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
-export { UPLOAD_DIR };
+export async function deleteUploadedFile(url: string): Promise<void> {
+  await del(url);
+}
