@@ -14,6 +14,9 @@ export type FormState = {
 
 const vendorProfileSchema = z
   .object({
+    companyName: z.string().trim().nullish(),
+    companyRegNumber: z.string().trim().nullish(),
+    vendorName: z.string().trim().nullish(),
     phone: z.string().trim().min(1, "Phone number is required"),
     country: z.string().trim().min(1, "Country is required"),
     city: z.string().trim().min(1, "City is required"),
@@ -35,6 +38,9 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
   const vendor = await requireVendor();
 
   const parsed = vendorProfileSchema.safeParse({
+    companyName: formData.get("companyName"),
+    companyRegNumber: formData.get("companyRegNumber"),
+    vendorName: formData.get("vendorName"),
     phone: formData.get("phone"),
     country: formData.get("country"),
     city: formData.get("city"),
@@ -67,6 +73,12 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
 
   const data = parsed.data;
 
+  if (vendor.type === "BUSINESS") {
+    if (!data.companyName) return { error: "Company name is required." };
+  } else {
+    if (!data.vendorName) return { error: "Full name is required." };
+  }
+
   await prisma.vendor.update({
     where: { id: vendor.id },
     data: {
@@ -87,12 +99,15 @@ export async function updateVendorProfile(_prevState: FormState, formData: FormD
       bankCountry: data.bankCountry,
       ...(vendor.type === "BUSINESS"
         ? {
+            companyName: data.companyName,
+            companyRegNumber: data.companyRegNumber || null,
             businessAddress: data.businessAddress || vendor.businessAddress,
             contactPersonName: data.contactPersonName || vendor.contactPersonName,
             contactPersonEmail: data.contactPersonEmail || vendor.contactPersonEmail,
             contactPersonPhone: data.contactPersonPhone || vendor.contactPersonPhone,
           }
         : {
+            vendorName: data.vendorName,
             homeAddressLine1: data.homeAddressLine1 || vendor.homeAddressLine1,
             homeAddressLine2: data.homeAddressLine2 || vendor.homeAddressLine2,
             homeCity: data.homeCity || vendor.homeCity,

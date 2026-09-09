@@ -18,6 +18,9 @@ export default async function VendorProfilePage() {
         <VendorProfileForm
           vendor={{
             type: vendor.type,
+            companyName: vendor.companyName,
+            companyRegNumber: vendor.companyRegNumber,
+            vendorName: vendor.vendorName,
             phone: vendor.phone,
             country: vendor.country,
             city: vendor.city,

@@ -8,6 +8,9 @@ import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 
 export type VendorProfileFields = {
   type: "BUSINESS" | "INDIVIDUAL";
+  companyName: string | null;
+  companyRegNumber: string | null;
+  vendorName: string | null;
   phone: string;
   country: string;
   city: string;
@@ -44,6 +47,18 @@ export function VendorProfileForm({ vendor }: { vendor: VendorProfileFields }) {
     <form action={formAction} className="space-y-8">
       {state.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
       {state.success ? <SuccessBanner>Profile updated.</SuccessBanner> : null}
+
+      <section className="space-y-4">
+        <h2 className="g6-section-label">{vendor.type === "BUSINESS" ? "Company Name" : "Full Name"}</h2>
+        {vendor.type === "BUSINESS" ? (
+          <>
+            <FormField label="Company Name" name="companyName" required defaultValue={vendor.companyName ?? ""} />
+            <FormField label="Company Registration No" name="companyRegNumber" defaultValue={vendor.companyRegNumber ?? ""} />
+          </>
+        ) : (
+          <FormField label="Full Name" name="vendorName" required defaultValue={vendor.vendorName ?? ""} />
+        )}
+      </section>
 
       <section className="space-y-4">
         <h2 className="g6-section-label">Contact Details</h2>

@@ -38,8 +38,8 @@ const styles = StyleSheet.create({
   twoCol: { flexDirection: "row", gap: 28, marginTop: 26 },
   colHalf: { flex: 1 },
   paymentBox: { border: "1 solid #e4e4e7", padding: 12, borderRadius: 2 },
-  paymentLine: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  paymentLabel: { fontSize: 8, color: "#71717a" },
+  paymentLine: { paddingVertical: 3 },
+  paymentLabel: { fontSize: 8, color: "#71717a", marginBottom: 1 },
   paymentValue: { fontSize: 9, fontWeight: 700 },
 
   notes: { marginTop: 20, fontSize: 9, color: "#52525b" },

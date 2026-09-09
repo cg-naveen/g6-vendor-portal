@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireVendor } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
+import { DeleteInvoiceButton } from "@/components/DeleteInvoiceButton";
+import { deleteTaskEntry } from "@/actions/tasks";
 
 export default async function InvoicesPage() {
   const vendor = await requireVendor();
@@ -29,6 +32,7 @@ export default async function InvoicesPage() {
               <th>Total</th>
               <th>Payment</th>
               <th>PDF</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -60,12 +64,24 @@ export default async function InvoicesPage() {
                       </>
                     ) : null}
                   </td>
+                  <td>
+                    {s.source === "VENDOR" && s.paymentStatus === "UNPAID" ? (
+                      <div className="flex items-center gap-3 text-xs">
+                        <Link href={`/vendor/tasks/${s.id}/edit`} className="text-[#9d84ff] hover:text-[#cabfff]">
+                          Edit
+                        </Link>
+                        <DeleteInvoiceButton action={deleteTaskEntry.bind(null, s.id)} />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[#5c5770]">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {submissions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-[#5c5770]">
+                <td colSpan={8} className="py-8 text-center text-[#5c5770]">
                   No invoices yet.
                 </td>
               </tr>
