@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/currentUser";
-import { markBillPaid as markBillPaidLib, markSubmissionPaid } from "@/lib/payments";
+import { markBillPaid as markBillPaidLib, markSubmissionPaid, markSubmissionUnpaid } from "@/lib/payments";
 
 export type FormState = {
   error?: string;
@@ -47,5 +47,17 @@ export async function markInvoicePaidAction(_prevState: FormState, formData: For
 
   await markSubmissionPaid(submissionId, parsed.data.amountPaid, parsed.data.transactionFee);
   revalidatePath(`/admin/vendors/${vendorId}`);
+  revalidatePath("/admin/invoices");
+  return {};
+}
+
+export async function markInvoiceUnpaidAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const vendorId = String(formData.get("vendorId") ?? "");
+  const submissionId = String(formData.get("submissionId") ?? "");
+
+  await markSubmissionUnpaid(submissionId);
+  revalidatePath(`/admin/vendors/${vendorId}`);
+  revalidatePath("/admin/invoices");
   return {};
 }

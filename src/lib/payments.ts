@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { renderReceiptPdf } from "@/lib/pdf/render";
-import { savePdf } from "@/lib/storage";
+import { savePdf, deleteUploadedFile } from "@/lib/storage";
 import { generateReceiptNumber } from "@/lib/invoiceNumber";
 import { vendorDisplayName, vendorAddress, logoToDataUri } from "@/lib/invoice";
 import { getOrgSettings } from "@/lib/orgSettings";
@@ -71,5 +71,25 @@ export async function markSubmissionPaid(submissionId: string, amountPaid: numbe
   await prisma.invoiceSubmission.update({
     where: { id: submissionId },
     data: { paymentStatus: "PAID", amountPaid, transactionFee, paidAt, receiptNumber, receiptPath },
+  });
+}
+
+export async function markSubmissionUnpaid(submissionId: string) {
+  const submission = await prisma.invoiceSubmission.findUniqueOrThrow({ where: { id: submissionId } });
+
+  if (submission.receiptPath) {
+    await deleteUploadedFile(submission.receiptPath);
+  }
+
+  await prisma.invoiceSubmission.update({
+    where: { id: submissionId },
+    data: {
+      paymentStatus: "UNPAID",
+      amountPaid: null,
+      transactionFee: null,
+      paidAt: null,
+      receiptNumber: null,
+      receiptPath: null,
+    },
   });
 }
