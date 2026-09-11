@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { vendorDisplayName } from "@/lib/invoice";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
 import { MarkInvoicePaidInline, MarkInvoiceUnpaidButton } from "./InvoiceActions";
+import { VendorFilterSelect } from "./VendorFilterSelect";
 import type { PaymentStatus } from "@prisma/client";
 
 export default async function AllInvoicesPage({
@@ -41,41 +42,21 @@ export default async function AllInvoicesPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="g6-page-title">All Invoices</h1>
-        <div className="flex gap-1 rounded-[11px] bg-black/30 p-1 text-sm">
-          {["ALL", "UNPAID", "PAID"].map((s) => (
-            <Link
-              key={s}
-              href={query({ status: s === "ALL" ? undefined : s })}
-              className={`rounded-[8px] px-3.5 py-1.5 text-[13px] font-semibold ${
-                (s === "ALL" && !statusFilter) || statusFilter === s ? "bg-white/[0.08] text-[#ece9f5]" : "text-[#8781a0]"
-              }`}
-            >
-              {s.charAt(0) + s.slice(1).toLowerCase()}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <span className="text-[13px] text-[#8781a0]">Vendor:</span>
-        <div className="flex flex-wrap gap-1 rounded-[11px] bg-black/30 p-1 text-sm">
-          <Link
-            href={query({ vendorId: undefined })}
-            className={`rounded-[8px] px-3.5 py-1.5 text-[13px] font-semibold ${!vendorId ? "bg-white/[0.08] text-[#ece9f5]" : "text-[#8781a0]"}`}
-          >
-            All
-          </Link>
-          {vendors.map((v) => (
-            <Link
-              key={v.id}
-              href={query({ vendorId: v.id })}
-              className={`rounded-[8px] px-3.5 py-1.5 text-[13px] font-semibold ${
-                vendorId === v.id ? "bg-white/[0.08] text-[#ece9f5]" : "text-[#8781a0]"
-              }`}
-            >
-              {vendorDisplayName(v)}
-            </Link>
-          ))}
+        <div className="flex items-center gap-3">
+          <VendorFilterSelect vendors={vendors.map((v) => ({ id: v.id, label: vendorDisplayName(v) }))} vendorId={vendorId} status={status} />
+          <div className="flex gap-1 rounded-[11px] bg-black/30 p-1 text-sm">
+            {["ALL", "UNPAID", "PAID"].map((s) => (
+              <Link
+                key={s}
+                href={query({ status: s === "ALL" ? undefined : s })}
+                className={`rounded-[8px] px-3.5 py-1.5 text-[13px] font-semibold ${
+                  (s === "ALL" && !statusFilter) || statusFilter === s ? "bg-white/[0.08] text-[#ece9f5]" : "text-[#8781a0]"
+                }`}
+              >
+                {s.charAt(0) + s.slice(1).toLowerCase()}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
