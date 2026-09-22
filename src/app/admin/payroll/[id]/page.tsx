@@ -121,15 +121,27 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 </td>
                 <td className="text-right">
                   {isDraft ? (
-                    <Link
-                      href={`/admin/payroll/${run.id}/payslips/${payslip.id}/edit`}
-                      className="text-[#9d84ff] hover:text-[#cabfff]"
-                    >
-                      Edit lines
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      <a
+                        href={`/api/payslips/${payslip.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#9d84ff] hover:text-[#cabfff]"
+                      >
+                        Preview
+                      </a>
+                      <Link
+                        href={`/admin/payroll/${run.id}/payslips/${payslip.id}/edit`}
+                        className="text-[#9d84ff] hover:text-[#cabfff]"
+                      >
+                        Edit lines
+                      </Link>
+                    </div>
                   ) : payslip.pdfPath ? (
                     <a
                       href={`/api/payslips/${payslip.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-[#9d84ff] hover:text-[#cabfff]"
                     >
                       PDF
