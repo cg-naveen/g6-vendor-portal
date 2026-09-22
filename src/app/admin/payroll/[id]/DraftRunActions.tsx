@@ -33,36 +33,43 @@ export function DeleteDraftRunForm({ runId, periodLabel }: { runId: string; peri
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(deleteDraftRunAction, initialState);
 
-  if (!open) {
-    return (
+  return (
+    <>
       <button type="button" onClick={() => setOpen(true)} className="g6-btn g6-btn-danger g6-btn-sm">
         Delete draft run
       </button>
-    );
-  }
 
-  return (
-    <form action={formAction} className="g6-panel space-y-3 border-[color-mix(in_srgb,#ff9494_35%,transparent)] p-4">
-      <input type="hidden" name="runId" value={runId} />
-      {state.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
-      <p className="text-[13px] font-semibold text-[#ff9494]">Delete {periodLabel} draft?</p>
-      <p className="text-[12px] text-[#a09bb5]">
-        This removes the draft run and every payslip in it. You can generate the month again from
-        the Payroll list afterwards. Finalized runs cannot be deleted.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={pending} className="g6-btn g6-btn-danger g6-btn-sm">
-          {pending ? "Deleting..." : "Confirm delete"}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => setOpen(false)}
-          className="g6-btn g6-btn-secondary g6-btn-sm"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <form
+            action={formAction}
+            className="w-full max-w-md space-y-4 rounded-2xl border border-[color-mix(in_srgb,#ff9494_35%,transparent)] bg-[#100e18] p-6 shadow-2xl"
+          >
+            <input type="hidden" name="runId" value={runId} />
+            {state.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
+            <div>
+              <p className="text-[15px] font-semibold text-[#ff9494]">Delete {periodLabel} draft?</p>
+              <p className="mt-2 text-[13px] text-[#a09bb5]">
+                This removes the draft run and every payslip in it. You can generate the month again
+                from the Payroll list afterwards. Finalized runs cannot be deleted.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" disabled={pending} className="g6-btn g6-btn-danger g6-btn-sm">
+                {pending ? "Deleting..." : "Confirm delete"}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setOpen(false)}
+                className="g6-btn g6-btn-secondary g6-btn-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </>
   );
 }

@@ -125,9 +125,34 @@ export async function updateEmployee(_prevState: FormState, formData: FormData):
     return { error: "Please fix the errors below.", fieldErrors: collectFieldErrors(parsed.error.issues) };
   }
 
-  await prisma.employee.update({ where: { id: employeeId }, data: employeeData(parsed.data) });
+  const hiredOn = parseDateInput(parsed.data.hiredOn);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.employee.update({ where: { id: employeeId }, data: employeeData(parsed.data) });
+
+    // Proration only pays days covered by a SalaryRecord. Editing hire date alone
+    // used to leave the starting salary on the old date, so earlier months showed
+    // 0/N days. Pull the earliest record back when hire moves earlier than it.
+    const earliest = await tx.salaryRecord.findFirst({
+      where: { employeeId },
+      orderBy: { effectiveFrom: "asc" },
+    });
+    if (earliest && earliest.effectiveFrom.getTime() > hiredOn.getTime()) {
+      const clash = await tx.salaryRecord.findFirst({
+        where: { employeeId, effectiveFrom: hiredOn, NOT: { id: earliest.id } },
+      });
+      if (!clash) {
+        await tx.salaryRecord.update({
+          where: { id: earliest.id },
+          data: { effectiveFrom: hiredOn },
+        });
+      }
+    }
+  });
 
   revalidatePath(`/admin/staff/${employeeId}`);
+  revalidatePath("/admin/staff");
+  revalidatePath("/admin/payroll");
   redirect(`/admin/staff/${employeeId}`);
 }
 

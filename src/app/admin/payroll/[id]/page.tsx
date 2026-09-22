@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/Badge";
 import { StatCard } from "@/components/StatCard";
 import { requireAdmin } from "@/lib/currentUser";
-import { getPayrollSettings } from "@/lib/payrollSettings";
 import { prisma } from "@/lib/prisma";
 import { formatDisplayDate } from "@/lib/billingDates";
 import { formatMoney } from "@/lib/stats";
@@ -32,18 +31,15 @@ const MONTH_NAMES = [
 export default async function PayrollRunPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const [run, settings] = await Promise.all([
-    prisma.payrollRun.findUnique({
-      where: { id },
-      include: {
-        payslips: {
-          include: { employee: { select: { employeeCode: true } }, lines: true },
-          orderBy: { payslipNumber: "asc" },
-        },
+  const run = await prisma.payrollRun.findUnique({
+    where: { id },
+    include: {
+      payslips: {
+        include: { employee: { select: { employeeCode: true } }, lines: true },
+        orderBy: { payslipNumber: "asc" },
       },
-    }),
-    getPayrollSettings(),
-  ]);
+    },
+  });
   if (!run) notFound();
 
   const totals = run.payslips.reduce(
@@ -163,7 +159,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       </div>
 
       {isDraft ? (
-        <FinalizeRunForm runId={run.id} bandsVerified={settings.bandsVerifiedAt !== null} />
+        <FinalizeRunForm runId={run.id} />
       ) : missingPdfs > 0 ? (
         <RegeneratePdfsButton runId={run.id} missing={missingPdfs} />
       ) : null}

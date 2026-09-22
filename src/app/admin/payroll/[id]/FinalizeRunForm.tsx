@@ -6,7 +6,7 @@ import { ErrorBanner, SuccessBanner } from "@/components/ErrorBanner";
 
 const initialState: PayrollFormState = {};
 
-export function FinalizeRunForm({ runId, bandsVerified }: { runId: string; bandsVerified: boolean }) {
+export function FinalizeRunForm({ runId }: { runId: string }) {
   const [state, formAction, pending] = useActionState(finalizeRunAction, initialState);
 
   return (
@@ -19,15 +19,6 @@ export function FinalizeRunForm({ runId, bandsVerified }: { runId: string; bands
           cannot be edited — a later correction is made as an adjustment line on a future payslip.
         </p>
       </div>
-
-      <label className="flex max-w-3xl items-start gap-3 text-sm text-[#dcd8ea]">
-        <input name="acknowledged" type="checkbox" required className="mt-1" />
-        <span>
-          {bandsVerified
-            ? "I have reviewed every payslip in this run."
-            : "I understand the SOCSO and EIS tables have not been reconciled against the official PERKESO schedule."}
-        </span>
-      </label>
 
       {state.error && !state.issues ? <ErrorBanner>{state.error}</ErrorBanner> : null}
       {state.issues ? (

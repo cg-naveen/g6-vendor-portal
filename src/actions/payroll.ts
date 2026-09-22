@@ -190,10 +190,6 @@ export async function finalizeRunAction(
   await requireAdmin();
   const runId = String(formData.get("runId") ?? "");
 
-  if (formData.get("acknowledged") !== "on") {
-    return { error: "Tick the acknowledgement before finalizing." };
-  }
-
   const result = await finalizePayrollRun(runId);
   revalidatePath(`/admin/payroll/${runId}`);
   revalidatePath("/admin/payroll");
