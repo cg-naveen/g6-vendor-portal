@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/currentUser";
 import { getPayrollSettings } from "@/lib/payrollSettings";
 import { prisma } from "@/lib/prisma";
+import { BandEditor } from "./BandEditor";
 import { EmployerDetailsForm } from "./EmployerDetailsForm";
 import { PayslipDesignForm } from "./PayslipDesignForm";
 import { RatesForm } from "./RatesForm";
@@ -31,9 +32,6 @@ export default async function PayrollSettingsPage({
       orderBy: [{ type: "asc" }, { wageFrom: "asc" }],
     }),
   ]);
-
-  const socsoBandCount = bands.filter(({ type }) => type === "SOCSO").length;
-  const eisBandCount = bands.filter(({ type }) => type === "EIS").length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -95,13 +93,22 @@ export default async function PayrollSettingsPage({
       ) : null}
 
       {tab === "socso" || tab === "eis" ? (
-        <div className="g6-card p-6">
-          <h2 className="text-base font-semibold text-[#ece9f5]">{tab === "socso" ? "SOCSO" : "EIS"} Contribution Bands</h2>
-          <p className="mt-2 text-sm text-[#8781a0]">
-            Band editing and regeneration will be added in Task 20.{" "}
-            {tab === "socso" ? socsoBandCount : eisBandCount} existing bands are loaded.
-          </p>
-        </div>
+        <BandEditor
+          type={tab === "socso" ? "SOCSO" : "EIS"}
+          bands={bands
+            .filter(({ type }) => type === (tab === "socso" ? "SOCSO" : "EIS"))
+            .map((band) => ({
+              id: band.id,
+              wageFrom: Number(band.wageFrom),
+              wageTo: Number(band.wageTo),
+              employeeAmount: Number(band.employeeAmount),
+              employerAmount: Number(band.employerAmount),
+              source: band.source,
+            }))}
+          verifiedAt={settings.bandsVerifiedAt}
+          verifiedBy={settings.bandsVerifiedBy}
+          generatedAt={settings.bandsGeneratedAt}
+        />
       ) : null}
 
       {tab === "design" ? (
