@@ -71,10 +71,25 @@ export async function updateRatesAction(_prevState: FormState, formData: FormDat
       eisEmployerRate: rate("EIS employer rate", 10),
       eisWageCeiling: z.coerce.number().positive("EIS wage ceiling must be greater than 0"),
       eisBandWidth: z.coerce.number().positive("EIS band width must be greater than 0"),
-      hrdfEnabled: z.coerce.boolean(),
+      hrdfEnabled: z.boolean(),
       hrdfRate: rate("HRDF rate", 10),
     })
-    .safeParse(Object.fromEntries(formData.entries()));
+    .safeParse({
+      epfEmployeeRate: formData.get("epfEmployeeRate"),
+      epfEmployerRate: formData.get("epfEmployerRate"),
+      epfEmployerRateBelowThreshold: formData.get("epfEmployerRateBelowThreshold"),
+      epfEmployerThreshold: formData.get("epfEmployerThreshold"),
+      socsoEmployeeRate: formData.get("socsoEmployeeRate"),
+      socsoEmployerRate: formData.get("socsoEmployerRate"),
+      socsoWageCeiling: formData.get("socsoWageCeiling"),
+      socsoBandWidth: formData.get("socsoBandWidth"),
+      eisEmployeeRate: formData.get("eisEmployeeRate"),
+      eisEmployerRate: formData.get("eisEmployerRate"),
+      eisWageCeiling: formData.get("eisWageCeiling"),
+      eisBandWidth: formData.get("eisBandWidth"),
+      hrdfEnabled: formData.get("hrdfEnabled") === "on",
+      hrdfRate: formData.get("hrdfRate"),
+    });
 
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -101,13 +116,20 @@ export async function updatePayslipDesignAction(_prevState: FormState, formData:
         .string()
         .trim()
         .regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex colour such as #18181b"),
-      showEmployerContributions: z.coerce.boolean(),
-      showHrdfColumn: z.coerce.boolean(),
-      showZakatColumn: z.coerce.boolean(),
+      showEmployerContributions: z.boolean(),
+      showHrdfColumn: z.boolean(),
+      showZakatColumn: z.boolean(),
       epfFootnote: z.string().trim().max(300).optional(),
       payslipFooterText: z.string().trim().max(300).optional(),
     })
-    .safeParse(Object.fromEntries(formData.entries()));
+    .safeParse({
+      accentColor: formData.get("accentColor"),
+      showEmployerContributions: formData.get("showEmployerContributions") === "on",
+      showHrdfColumn: formData.get("showHrdfColumn") === "on",
+      showZakatColumn: formData.get("showZakatColumn") === "on",
+      epfFootnote: formData.get("epfFootnote"),
+      payslipFooterText: formData.get("payslipFooterText"),
+    });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the design settings." };
