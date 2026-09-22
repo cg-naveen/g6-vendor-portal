@@ -75,7 +75,8 @@ enum UserRole { ADMIN  VENDOR  STAFF }   // STAFF is new
 
 enum EmploymentStatus  { ACTIVE  RESIGNED  TERMINATED }
 enum PayrollRunStatus  { DRAFT  FINALIZED }
-enum StatutoryBandType { SOCSO  EIS }
+enum StatutoryBandType   { SOCSO  EIS }
+enum StatutoryBandSource { GENERATED  MANUAL }
 
 enum PayslipLineKind {
   EARNING          // adds to gross; the three flags select which bases it feeds
@@ -95,7 +96,7 @@ model Employee {
   id           String @id @default(cuid())
   userId       String @unique
   user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employeeCode String @unique          // printed as "Employee ID", e.g. G6-EMP-009
+  employeeCode String @unique          // printed as "Employee ID"; prefix from PayrollSettings
 
   fullName    String
   designation String
@@ -306,6 +307,7 @@ model StatutoryBand {
   wageTo         Decimal           @db.Decimal(14, 2)
   employeeAmount Decimal           @db.Decimal(14, 2)
   employerAmount Decimal           @db.Decimal(14, 2)
+  source         StatutoryBandSource @default(GENERATED)
 
   @@unique([type, wageFrom])
   @@index([type])
@@ -435,7 +437,16 @@ This rule was inferred from the reference payslip and verified against all three
 
 The band *ceiling* would give 26.50 rather than 26.25, so midpoint is confirmed rather than guessed.
 
-Individual band rows remain hand-editable on top of generation, for when PERKESO publishes a schedule that does not follow the rule exactly. Regenerating bands never affects finalized runs, because those carry their own `rateSnapshot`.
+### Admin ownership of the band tables
+
+Generation is a starting point, not the authority. The admin owns these tables and is expected to reconcile them against the official PERKESO schedule, so the design makes the distinction visible rather than assuming the generated values are correct:
+
+- Every `StatutoryBand` row carries `source`: `GENERATED` when produced by the rule, `MANUAL` once an admin has edited it. The band editor shows this per row, so a hand-corrected band is never silently overwritten by a later regeneration — regeneration rewrites `GENERATED` rows and leaves `MANUAL` rows alone.
+- `bandsVerifiedAt` and `bandsVerifiedBy` record that an admin has checked the whole table against the official schedule. While `bandsVerifiedAt` is null, the payroll pages carry a persistent warning that the tables are generated and unverified, and finalizing a run requires an explicit acknowledgement checkbox. It warns rather than blocks — blocking would make the portal unusable until someone finds the PDF.
+- The band editor supports CSV import, so the admin can transcribe the official schedule wholesale instead of editing sixty-odd rows by hand. Imported rows land as `MANUAL`.
+- Regenerating bands never affects finalized runs, because those carry their own `rateSnapshot`.
+
+This keeps every figure configurable — which was the requirement — while making it unambiguous which numbers carry statutory authority and which are the software's best guess.
 
 **Entered by hand:** PCB, per employee per month. **Employee-elected fixed amount:** Zakat.
 
@@ -444,6 +455,7 @@ model PayrollSettings {
   id String @id @default("singleton")
 
   // Employer statutory identifiers
+  employeeCodePrefix  String  @default("G6-EMP-")
   businessRegNumber   String?
   epfEmployerNumber   String?
   socsoEmployerNumber String?
@@ -481,6 +493,8 @@ model PayrollSettings {
   payslipFooterText         String?
 
   bandsGeneratedAt DateTime?
+  bandsVerifiedAt  DateTime?
+  bandsVerifiedBy  String?
   updatedAt        DateTime @updatedAt
 }
 ```
@@ -539,7 +553,7 @@ After finalizing, the admin records a payment date and reference against the run
 | `/admin/payroll` | Runs by year and month with status and totals; "Generate <Month>" |
 | `/admin/payroll/[runId]` | The run: one row per employee (gross, EPF, SOCSO, EIS, PCB, net), inline PCB entry, per-payslip edit, Finalize, Mark Paid |
 | `/admin/payroll/[runId]/payslips/[id]/edit` | Line editor and notes |
-| `/admin/payroll-settings` | Tabs: Employer details, Rates, SOCSO bands, EIS bands, Payslip design |
+| `/admin/payroll-settings` | Tabs: Employer details, Rates, SOCSO bands, EIS bands, Payslip design. Band tabs show per-row `source`, support CSV import and "Regenerate from rates", and carry the verification stamp |
 
 ### Staff
 
@@ -640,9 +654,11 @@ Payslips are the most sensitive data this application will hold: NRIC, EPF and S
 
 Year-to-date figures on payslips; bank bulk-payment file export; Form EA annual statements; leave and attendance tracking; claims and reimbursement workflow; multi-currency; email notification of payslips (no SMTP is wired up anywhere in this application); automatic PCB calculation.
 
+Each of these is recorded with its rough shape, dependencies and reason for deferral in `docs/payroll-future-plans.md`.
+
 ## 12. Items requiring verification before production payroll
 
-1. **The generated SOCSO and EIS band tables must be spot-checked against the official PERKESO schedule.** The generation rule was inferred from a single reference payslip and verified against three data points. That is strong evidence, not authority. Trusting a reverse-engineered rule is exactly how a compliance bug reaches production.
+1. **The generated SOCSO and EIS band tables must be reconciled against the official PERKESO schedule.** The generation rule was inferred from a single reference payslip and verified against three data points. That is strong evidence, not authority, and trusting a reverse-engineered rule is exactly how a compliance bug reaches production. The workflow in section 5 puts this in the admin's hands: generated rows are marked as such, the table can be CSV-imported from the official schedule, and the portal warns on every payroll page until someone stamps `bandsVerifiedAt`. The software should not be the last word on a statutory figure.
 2. **EPF rates and the RM5,000 employer threshold** should be confirmed against the current EPF Third Schedule at implementation time.
-3. **HRDF applicability** — whether the entity is PSMB-registered with ten or more employees — determines whether `hrdfEnabled` should default true.
+3. **HRDF applicability** — whether the entity is PSMB-registered with ten or more employees. This is a settings toggle defaulting to false, so it needs confirming before the first real run rather than before implementation.
 4. **The EPF percentage-versus-Third-Schedule caveat** in section 5 should be an explicit, accepted trade-off rather than an implementation detail.
