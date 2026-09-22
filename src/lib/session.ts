@@ -15,7 +15,7 @@ function getSecretKey() {
 
 export type SessionPayload = {
   userId: string;
-  role: "ADMIN" | "VENDOR";
+  role: "ADMIN" | "VENDOR" | "STAFF";
   vendorId: string | null;
 };
 
@@ -50,7 +50,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     const { payload } = await jwtVerify(token, getSecretKey());
     return {
       userId: payload.userId as string,
-      role: payload.role as "ADMIN" | "VENDOR",
+      role: payload.role as "ADMIN" | "VENDOR" | "STAFF",
       vendorId: (payload.vendorId as string | null) ?? null,
     };
   } catch {
