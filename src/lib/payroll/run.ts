@@ -1,7 +1,10 @@
 import "server-only";
 import type { Employee, PayslipLineKind, Prisma, SalaryRecord } from "@prisma/client";
+import { renderPayslipPdf } from "@/lib/pdf/render";
 import { prisma } from "@/lib/prisma";
+import { savePdf } from "@/lib/storage";
 import { computePayslip } from "./calc";
+import { buildPayslipPdfData } from "./payslipPdf";
 import { formatPayslipNumber } from "./payslipNumber";
 import { prorateSalaryForMonth } from "./proration";
 import { loadRateConfig } from "./rates";
@@ -256,4 +259,135 @@ export async function recomputePayslip(payslipId: string): Promise<void> {
   if (updated.count === 0) {
     throw new Error("This payslip belongs to a finalized run and cannot be recomputed.");
   }
+}
+
+export type FinalizeIssue = { payslipId: string; employeeName: string; message: string };
+
+/**
+ * Everything that must be true before a run can be issued.
+ *
+ * These guards are the reason the draft/finalize split exists. A payslip with a
+ * negative net or a missing statutory number looks plausible and is wrong, and
+ * once issued it cannot be quietly corrected.
+ */
+export async function validateRunForFinalize(runId: string): Promise<FinalizeIssue[]> {
+  const run = await prisma.payrollRun.findUniqueOrThrow({
+    where: { id: runId },
+    include: { payslips: { include: { employee: true } } },
+  });
+
+  if (run.status === "FINALIZED") {
+    return [{ payslipId: "", employeeName: "", message: "This run has already been finalized." }];
+  }
+
+  if (run.payslips.length === 0) {
+    return [{ payslipId: "", employeeName: "", message: "This run has no payslips. Generate it first." }];
+  }
+
+  const issues: FinalizeIssue[] = [];
+
+  for (const payslip of run.payslips) {
+    const add = (message: string) =>
+      issues.push({ payslipId: payslip.id, employeeName: payslip.employeeName, message });
+
+    if (payslip.pcb === null) {
+      add("PCB has not been entered. Enter the LHDN figure, or 0.00 to confirm none is due.");
+    }
+
+    if (Number(payslip.netPay) < 0) {
+      add(
+        `Net pay is negative (${Number(payslip.netPay).toFixed(2)}). Deductions exceed pay — reduce a deduction before issuing.`
+      );
+    }
+
+    if (payslip.employee.epfEnabled && !payslip.epfNumber) {
+      add("EPF is enabled for this employee but no EPF number is on file.");
+    }
+
+    if (payslip.employee.socsoEnabled && !payslip.socsoNumber) {
+      add("SOCSO is enabled for this employee but no SOCSO number is on file.");
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Locks the run, then renders the PDFs.
+ *
+ * The status flip and figure freeze happen in one transaction; rendering runs
+ * afterwards, sequentially, following the same pattern as
+ * createInvoiceSubmission in src/lib/invoice.ts. Rendering inside the
+ * transaction would hold it open across N PDF renders against a 300s function
+ * ceiling.
+ *
+ * The honest failure mode: if rendering dies partway, the run is locked with
+ * some pdfPath still null. regenerateMissingPayslipPdfs covers that, and the
+ * admin UI surfaces it. Locking first is the right trade — a locked run with a
+ * missing PDF is recoverable, whereas an unlocked run whose PDFs have been
+ * handed out is not.
+ */
+export async function finalizePayrollRun(runId: string) {
+  const issues = await validateRunForFinalize(runId);
+  if (issues.length > 0) return { ok: false as const, issues };
+
+  const config = await loadRateConfig();
+  const now = new Date();
+
+  const run = await prisma.payrollRun.update({
+    where: { id: runId },
+    data: {
+      status: "FINALIZED",
+      finalizedAt: now,
+      issuedOn: now,
+      rateSnapshot: config as unknown as Prisma.InputJsonValue,
+    },
+    include: { payslips: { select: { id: true } } },
+  });
+
+  let rendered = 0;
+  let failed = 0;
+
+  for (const payslip of run.payslips) {
+    try {
+      await renderAndStorePayslipPdf(payslip.id);
+      rendered++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return { ok: true as const, rendered, failed };
+}
+
+async function renderAndStorePayslipPdf(payslipId: string): Promise<void> {
+  const data = await buildPayslipPdfData(payslipId);
+  const buffer = await renderPayslipPdf(data);
+
+  const payslip = await prisma.payslip.findUniqueOrThrow({
+    where: { id: payslipId },
+    select: { payslipNumber: true, employeeId: true },
+  });
+
+  const url = await savePdf(buffer, `payslips/${payslip.employeeId}`, `${payslip.payslipNumber}.pdf`);
+  await prisma.payslip.update({ where: { id: payslipId }, data: { pdfPath: url } });
+}
+
+/** Retries the payslips whose PDF never got written. Safe to run repeatedly. */
+export async function regenerateMissingPayslipPdfs(runId: string): Promise<number> {
+  const missing = await prisma.payslip.findMany({
+    where: { runId, pdfPath: null },
+    select: { id: true },
+  });
+
+  let repaired = 0;
+  for (const payslip of missing) {
+    try {
+      await renderAndStorePayslipPdf(payslip.id);
+      repaired++;
+    } catch {
+      // Left for the next attempt; the UI keeps showing the missing-PDF warning.
+    }
+  }
+  return repaired;
 }
