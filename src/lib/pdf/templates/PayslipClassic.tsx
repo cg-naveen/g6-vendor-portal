@@ -57,6 +57,8 @@ const styles = StyleSheet.create({
 
   footnotes: { position: "absolute", bottom: 34, left: 44, right: 44 },
   footnote: { fontSize: 6.5, color: "#52525b", marginBottom: 3 },
+  // Footnote markers on EPF/PCB headers and note lines (react-pdf supports 'super').
+  footnoteMark: { fontSize: 5, verticalAlign: "super" },
   footer: { position: "absolute", bottom: 18, left: 44, right: 44, textAlign: "center", fontSize: 6.5, color: "#a1a1aa" },
 });
 
@@ -175,11 +177,15 @@ export function PayslipClassic({ data }: { data: PayslipPdfData }) {
         <View style={{ marginTop: 22 }}>
           <View style={styles.contribHeaderRow}>
             <Text style={[styles.sectionTitle, styles.contribLabelCell]}>Contributions</Text>
-            <Text style={styles.contribCellHeader}>EPF 1</Text>
+            <Text style={styles.contribCellHeader}>
+              EPF<Text style={styles.footnoteMark}>1</Text>
+            </Text>
             <Text style={styles.contribCellHeader}>SOCSO</Text>
             <Text style={styles.contribCellHeader}>EIS</Text>
             {data.showZakatColumn ? <Text style={styles.contribCellHeader}>Zakat</Text> : null}
-            <Text style={styles.contribCellHeader}>PCB 2</Text>
+            <Text style={styles.contribCellHeader}>
+              PCB<Text style={styles.footnoteMark}>2</Text>
+            </Text>
             {data.showHrdfColumn ? <Text style={styles.contribCellHeader}>HRDF</Text> : null}
             <Text style={[styles.contribCellHeader, { width: 80 }]}>Amount</Text>
           </View>
@@ -218,7 +224,7 @@ export function PayslipClassic({ data }: { data: PayslipPdfData }) {
         <View style={styles.footnotes} fixed>
           {data.footnotes.map((note, index) => (
             <Text style={styles.footnote} key={index}>
-              {index + 1} {note}
+              <Text style={styles.footnoteMark}>{index + 1}</Text> {note}
             </Text>
           ))}
         </View>
