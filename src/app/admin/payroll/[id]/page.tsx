@@ -5,8 +5,10 @@ import { StatCard } from "@/components/StatCard";
 import { requireAdmin } from "@/lib/currentUser";
 import { getPayrollSettings } from "@/lib/payrollSettings";
 import { prisma } from "@/lib/prisma";
+import { formatDisplayDate } from "@/lib/billingDates";
 import { formatMoney } from "@/lib/stats";
 import { FinalizeRunForm } from "./FinalizeRunForm";
+import { MarkRunPaidForm } from "./MarkRunPaidForm";
 import { PcbInlineInput } from "./PcbInlineInput";
 import { RegeneratePdfsButton } from "./RegeneratePdfsButton";
 
@@ -153,6 +155,19 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <FinalizeRunForm runId={run.id} bandsVerified={settings.bandsVerifiedAt !== null} />
       ) : missingPdfs > 0 ? (
         <RegeneratePdfsButton runId={run.id} missing={missingPdfs} />
+      ) : null}
+
+      {run.status === "FINALIZED" && run.paymentStatus === "UNPAID" ? (
+        <MarkRunPaidForm runId={run.id} />
+      ) : null}
+
+      {run.paymentStatus === "PAID" ? (
+        <div className="g6-panel p-4">
+          <p className="text-[13px] font-semibold text-[#5ee8c0]">Paid on {formatDisplayDate(run.paidAt!)}</p>
+          {run.paymentReference ? (
+            <p className="mt-1 text-[12px] text-[#a09bb5]">Reference: {run.paymentReference}</p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
