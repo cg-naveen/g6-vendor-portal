@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge, employeeStatusVariant } from "@/components/Badge";
+import { startOfUtcDay } from "@/lib/billingDates";
 import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/stats";
@@ -7,8 +8,16 @@ import { formatMoney } from "@/lib/stats";
 export default async function StaffPage() {
   await requireAdmin();
 
+  const today = startOfUtcDay(new Date());
   const employees = await prisma.employee.findMany({
-    include: { salaryRecords: { orderBy: { effectiveFrom: "desc" }, take: 1 } },
+    include: {
+      // Latest record that has already taken effect — not a future raise.
+      salaryRecords: {
+        where: { effectiveFrom: { lte: today } },
+        orderBy: { effectiveFrom: "desc" },
+        take: 1,
+      },
+    },
     orderBy: [{ status: "asc" }, { employeeCode: "asc" }],
   });
 

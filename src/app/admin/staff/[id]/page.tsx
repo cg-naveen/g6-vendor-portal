@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
 import { StatCard } from "@/components/StatCard";
-import { formatDisplayDate } from "@/lib/billingDates";
+import { formatDisplayDate, startOfUtcDay } from "@/lib/billingDates";
 import { requireAdmin } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/stats";
@@ -25,7 +25,9 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   });
   if (!employee) notFound();
 
-  const currentSalary = employee.salaryRecords[0];
+  const today = startOfUtcDay(new Date()).getTime();
+  const currentSalary =
+    employee.salaryRecords.find((record) => startOfUtcDay(record.effectiveFrom).getTime() <= today) ?? null;
   const address = [
     employee.addressLine1,
     employee.addressLine2,
