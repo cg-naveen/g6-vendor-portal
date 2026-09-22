@@ -404,7 +404,7 @@ Reuses the existing UTC helpers in `src/lib/billingDates.ts`, whose own comment 
 
 ```
 src/lib/payroll/
-  money.ts           pure        toCents, fromCents, ceilToRinggit, roundTo5Sen
+  money.ts           pure        toCents, fromCents, pctOfCents, ceilToRinggit, floorTo5Sen
   calc.ts            pure        computePayslip
   proration.ts       pure        prorateSalaryForMonth
   payslipNumber.ts   pure        PS-{YYYY}-{MM}-{employeeCode}
@@ -424,7 +424,7 @@ Every rate, threshold and ceiling is admin-configurable. The mechanism differs b
 **Used to generate a band table:** SOCSO and EIS. The percentage cannot be applied directly to salary — 5300 x 0.5% = 26.50, whereas the statutory figure is 26.25, because it derives from the band midpoint. A "Regenerate bands from rates" admin action rebuilds `StatutoryBand` from the configured rates, ceiling and band width, using:
 
 ```
-bandMidpoint x rate, rounded to the nearest 5 sen
+bandMidpoint x rate, floored to 5 sen
 ```
 
 This rule was inferred from the reference payslip and verified against all three of its data points. For the 5,200.01-5,300.00 band, midpoint 5,250:
@@ -432,10 +432,12 @@ This rule was inferred from the reference payslip and verified against all three
 | | Computed | Reference |
 | --- | --- | --- |
 | SOCSO employee | 5250 x 0.5% = 26.25 | 26.25 |
-| SOCSO employer | 5250 x 1.75% = 91.875 -> 91.85 | 91.85 |
+| SOCSO employer | 5250 x 1.75% = 91.875, floored to 5 sen -> 91.85 | 91.85 |
 | EIS (each side) | 5250 x 0.2% = 10.50 | 10.50 |
 
 The band *ceiling* would give 26.50 rather than 26.25, so midpoint is confirmed rather than guessed.
+
+The rounding *direction* is weaker evidence. Only the SOCSO employer figure needed rounding at all (the other two are exact at this band), and 91.875 -> 91.85 is consistent with flooring but also with round-half-down. Rounding to the *nearest* 5 sen would give 91.90, which contradicts the reference, so nearest is ruled out. The implementation floors, and the direction is one of the things the official-schedule reconciliation in section 12 must settle.
 
 ### Admin ownership of the band tables
 
@@ -615,7 +617,7 @@ Further cases:
 - **Proration** — mid-month join, mid-month exit, join and leave in the same month, a raise mid-month, two raises in one month, 28/29/31-day denominators, per-day cent drift
 - **Float safety** — a salary such as 3333.33 that produces artifacts under naive float arithmetic
 - **Negative net** detection
-- **money.ts** — `toCents`/`fromCents` round-trip; `ceilToRinggit` leaves an exact ringgit unchanged (583.00 stays 583.00, not 584.00); `roundTo5Sen`
+- **money.ts** — `toCents`/`fromCents` round-trip; `ceilToRinggit` leaves an exact ringgit unchanged (583.00 stays 583.00, not 584.00); `floorTo5Sen` on 91.875 gives 91.85; `pctOfCents` is exact for every configured rate
 - **payslipNumber.ts** — format and zero-padded month
 
 ## 9. Migration and rollout
@@ -658,7 +660,7 @@ Each of these is recorded with its rough shape, dependencies and reason for defe
 
 ## 12. Items requiring verification before production payroll
 
-1. **The generated SOCSO and EIS band tables must be reconciled against the official PERKESO schedule.** The generation rule was inferred from a single reference payslip and verified against three data points. That is strong evidence, not authority, and trusting a reverse-engineered rule is exactly how a compliance bug reaches production. The workflow in section 5 puts this in the admin's hands: generated rows are marked as such, the table can be CSV-imported from the official schedule, and the portal warns on every payroll page until someone stamps `bandsVerifiedAt`. The software should not be the last word on a statutory figure.
+1. **The generated SOCSO and EIS band tables must be reconciled against the official PERKESO schedule.** The generation rule was inferred from a single reference payslip and verified against three data points, and its rounding *direction* rests on just one of them. That is strong evidence, not authority, and trusting a reverse-engineered rule is exactly how a compliance bug reaches production. The workflow in section 5 puts this in the admin's hands: generated rows are marked as such, the table can be CSV-imported from the official schedule, and the portal warns on every payroll page until someone stamps `bandsVerifiedAt`. The software should not be the last word on a statutory figure.
 2. **EPF rates and the RM5,000 employer threshold** should be confirmed against the current EPF Third Schedule at implementation time.
 3. **HRDF applicability** — whether the entity is PSMB-registered with ten or more employees. This is a settings toggle defaulting to false, so it needs confirming before the first real run rather than before implementation.
 4. **The EPF percentage-versus-Third-Schedule caveat** in section 5 should be an explicit, accepted trade-off rather than an implementation detail.
