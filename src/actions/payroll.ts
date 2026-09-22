@@ -67,29 +67,33 @@ export async function setPayslipPcbAction(_prevState: FormState, formData: FormD
     }
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const payslip = await tx.payslip.findUniqueOrThrow({
-      where: { id: payslipId },
-      select: { runId: true },
-    });
-    const draftGuard = await tx.payrollRun.updateMany({
-      where: { id: payslip.runId, status: "DRAFT" },
-      data: { updatedAt: new Date() },
-    });
-    if (draftGuard.count === 0) return { editable: false as const, runId: payslip.runId };
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const payslip = await tx.payslip.findUniqueOrThrow({
+        where: { id: payslipId },
+        select: { runId: true },
+      });
+      const draftGuard = await tx.payrollRun.updateMany({
+        where: { id: payslip.runId, status: "DRAFT" },
+        data: { updatedAt: new Date() },
+      });
+      if (draftGuard.count === 0) return { editable: false as const, runId: payslip.runId };
 
-    await tx.payslip.update({
-      where: { id: payslipId },
-      data: { pcb: raw === "" ? null : Number(raw) },
+      await tx.payslip.update({
+        where: { id: payslipId },
+        data: { pcb: raw === "" ? null : Number(raw) },
+      });
+      await recomputePayslip(payslipId, tx);
+      return { editable: true as const, runId: payslip.runId };
     });
-    await recomputePayslip(payslipId, tx);
-    return { editable: true as const, runId: payslip.runId };
-  });
 
-  if (!result.editable) return { error: FINALIZED_ERROR };
+    if (!result.editable) return { error: FINALIZED_ERROR };
 
-  revalidatePath(`/admin/payroll/${result.runId}`);
-  return { success: true };
+    revalidatePath(`/admin/payroll/${result.runId}`);
+    return { success: true };
+  } catch {
+    return { error: "Could not save PCB. Try again." };
+  }
 }
 
 const lineSchema = z.object({

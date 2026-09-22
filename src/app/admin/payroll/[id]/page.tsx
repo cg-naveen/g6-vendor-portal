@@ -10,6 +10,7 @@ import { formatMoney } from "@/lib/stats";
 import { FinalizeRunForm } from "./FinalizeRunForm";
 import { DeleteDraftRunForm, RefreshDraftRunForm } from "./DraftRunActions";
 import { MarkRunPaidForm } from "./MarkRunPaidForm";
+import { PayslipPdfLink } from "./PayslipPdfLink";
 import { PcbInlineInput } from "./PcbInlineInput";
 import { RegeneratePdfsButton } from "./RegeneratePdfsButton";
 
@@ -130,14 +131,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <td className="text-right">
                   {isDraft ? (
                     <div className="flex flex-wrap items-center justify-end gap-3">
-                      <a
-                        href={`/api/payslips/${payslip.id}/pdf`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#9d84ff] hover:text-[#cabfff]"
-                      >
-                        Preview
-                      </a>
+                      <PayslipPdfLink payslipId={payslip.id}>Preview</PayslipPdfLink>
                       <Link
                         href={`/admin/payroll/${run.id}/payslips/${payslip.id}/edit`}
                         className="text-[#9d84ff] hover:text-[#cabfff]"
@@ -146,14 +140,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                       </Link>
                     </div>
                   ) : payslip.pdfPath ? (
-                    <a
-                      href={`/api/payslips/${payslip.id}/pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#9d84ff] hover:text-[#cabfff]"
-                    >
-                      PDF
-                    </a>
+                    <PayslipPdfLink payslipId={payslip.id}>PDF</PayslipPdfLink>
                   ) : (
                     <span className="text-[#ff9494]">PDF missing</span>
                   )}

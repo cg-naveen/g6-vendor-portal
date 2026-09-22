@@ -22,7 +22,15 @@ export function PcbInlineInput({ payslipId, value }: { payslipId: string; value:
         aria-invalid={value === null || Boolean(state.fieldErrors?.pcb)}
         aria-label="PCB amount"
         title={state.error}
-        onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+        onBlur={(event) => {
+          // Preview / PDF links use data-payslip-pdf-link and mousedown preventDefault;
+          // still skip submit if focus moved there, or if the value did not change.
+          const next = event.relatedTarget as HTMLElement | null;
+          if (next?.closest?.("[data-payslip-pdf-link]")) return;
+          const committed = value === null ? "" : Number(value).toFixed(2);
+          if (event.currentTarget.value === committed) return;
+          event.currentTarget.form?.requestSubmit();
+        }}
         className={`g6-input w-24 py-1 text-xs ${value === null ? "g6-input-error" : ""}`}
       />
     </form>
