@@ -60,8 +60,6 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      {settings.bandsVerifiedAt === null ? <UnverifiedBandsWarning /> : null}
-
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="g6-page-title">{`Payroll — ${monthName} ${run.year}`}</h1>
         <Badge variant={run.status === "FINALIZED" ? "paid" : "draft"}>{run.status}</Badge>
@@ -182,22 +180,6 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           ) : null}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function UnverifiedBandsWarning() {
-  return (
-    <div className="g6-panel border-[color-mix(in_srgb,var(--g6-pending)_45%,transparent)] p-4">
-      <p className="text-[13px] font-semibold text-[#f7c96e]">SOCSO and EIS tables are unverified</p>
-      <p className="mt-1 text-[12px] text-[#a09bb5]">
-        These tables were generated from the configured rates, not taken from the official PERKESO schedule. Reconcile
-        them in{" "}
-        <Link href="/admin/payroll-settings" className="text-[#9d84ff] hover:text-[#cabfff]">
-          Payroll Settings
-        </Link>{" "}
-        before running real payroll.
-      </p>
     </div>
   );
 }

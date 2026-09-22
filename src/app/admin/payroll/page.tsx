@@ -1,25 +1,19 @@
 import Link from "next/link";
 import { Badge, statusBadgeVariant } from "@/components/Badge";
 import { requireAdmin } from "@/lib/currentUser";
-import { getPayrollSettings } from "@/lib/payrollSettings";
 import { prisma } from "@/lib/prisma";
 import { GenerateRunForm } from "./GenerateRunForm";
 
 export default async function PayrollPage() {
   await requireAdmin();
 
-  const [runs, settings] = await Promise.all([
-    prisma.payrollRun.findMany({
-      include: { _count: { select: { payslips: true } } },
-      orderBy: [{ year: "desc" }, { month: "desc" }],
-    }),
-    getPayrollSettings(),
-  ]);
+  const runs = await prisma.payrollRun.findMany({
+    include: { _count: { select: { payslips: true } } },
+    orderBy: [{ year: "desc" }, { month: "desc" }],
+  });
 
   return (
     <div className="space-y-6">
-      {settings.bandsVerifiedAt === null ? <UnverifiedBandsWarning /> : null}
-
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
         <h1 className="g6-page-title">Payroll</h1>
         <GenerateRunForm />
@@ -66,22 +60,6 @@ export default async function PayrollPage() {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function UnverifiedBandsWarning() {
-  return (
-    <div className="g6-panel border-[color-mix(in_srgb,var(--g6-pending)_45%,transparent)] p-4">
-      <p className="text-[13px] font-semibold text-[#f7c96e]">SOCSO and EIS tables are unverified</p>
-      <p className="mt-1 text-[12px] text-[#a09bb5]">
-        These tables were generated from the configured rates, not taken from the official PERKESO schedule. Reconcile
-        them in{" "}
-        <Link href="/admin/payroll-settings" className="text-[#9d84ff] hover:text-[#cabfff]">
-          Payroll Settings
-        </Link>{" "}
-        before running real payroll.
-      </p>
     </div>
   );
 }
