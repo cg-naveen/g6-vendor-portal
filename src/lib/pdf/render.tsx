@@ -1,7 +1,8 @@
 import "server-only";
 import { renderToBuffer } from "@react-pdf/renderer";
 import type { InvoiceTemplate } from "@prisma/client";
-import type { InvoicePdfData } from "./types";
+import type { InvoicePdfData, PayslipPdfData } from "./types";
+import { PayslipClassic } from "./templates/PayslipClassic";
 import { ClassicInvoice } from "./templates/ClassicInvoice";
 import { ModernInvoice } from "./templates/ModernInvoice";
 import { MinimalInvoice } from "./templates/MinimalInvoice";
@@ -25,4 +26,8 @@ export async function renderInvoicePdf(template: InvoiceTemplate, data: InvoiceP
 
 export async function renderReceiptPdf(data: ReceiptPdfData): Promise<Buffer> {
   return renderToBuffer(<Receipt data={data} />);
+}
+
+export async function renderPayslipPdf(data: PayslipPdfData): Promise<Buffer> {
+  return renderToBuffer(<PayslipClassic data={data} />);
 }
