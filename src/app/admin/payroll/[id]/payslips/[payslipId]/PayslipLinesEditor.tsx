@@ -28,6 +28,13 @@ export function emptyPayslipLineRow(): PayslipLineRow {
   };
 }
 
+function normalizePayslipLineRow(row: PayslipLineRow): PayslipLineRow {
+  if (row.kind === "NET_DEDUCTION") {
+    return { ...row, taxable: false, epfApplicable: false, socsoApplicable: false };
+  }
+  return row;
+}
+
 const KIND_OPTIONS: { value: PayslipLineRow["kind"]; label: string }[] = [
   { value: "EARNING", label: "Earning" },
   { value: "WAGE_DEDUCTION", label: "Wage deduction" },
@@ -47,7 +54,7 @@ export function PayslipLinesEditor({
   initialNotes: string;
 }) {
   const [state, formAction, pending] = useActionState(updatePayslipLinesAction, {});
-  const [rows, setRows] = useState<PayslipLineRow[]>(initialRows);
+  const [rows, setRows] = useState<PayslipLineRow[]>(() => initialRows.map(normalizePayslipLineRow));
   const [notes, setNotes] = useState(initialNotes);
 
   const preview = useMemo(() => {
@@ -68,8 +75,13 @@ export function PayslipLinesEditor({
       prev.map((row, i) => {
         if (i !== index) return row;
         const next = { ...row, [field]: value };
-        if (field === "kind" && value === "NET_DEDUCTION") {
-          return { ...next, taxable: false, epfApplicable: false, socsoApplicable: false };
+        if (field === "kind") {
+          if (value === "NET_DEDUCTION") {
+            return { ...next, taxable: false, epfApplicable: false, socsoApplicable: false };
+          }
+          if (value === "WAGE_DEDUCTION" || value === "EARNING") {
+            return { ...next, taxable: true, epfApplicable: true, socsoApplicable: true };
+          }
         }
         return next;
       })
