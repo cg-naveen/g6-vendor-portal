@@ -263,6 +263,8 @@ export async function recomputePayslip(payslipId: string): Promise<void> {
 
 export type FinalizeIssue = { payslipId: string; employeeName: string; message: string };
 
+type PayrollRunDb = Pick<typeof prisma, "payrollRun">;
+
 /**
  * Everything that must be true before a run can be issued.
  *
@@ -270,8 +272,8 @@ export type FinalizeIssue = { payslipId: string; employeeName: string; message: 
  * negative net or a missing statutory number looks plausible and is wrong, and
  * once issued it cannot be quietly corrected.
  */
-export async function validateRunForFinalize(runId: string): Promise<FinalizeIssue[]> {
-  const run = await prisma.payrollRun.findUniqueOrThrow({
+async function validateRunForFinalizeWithDb(db: PayrollRunDb, runId: string): Promise<FinalizeIssue[]> {
+  const run = await db.payrollRun.findUniqueOrThrow({
     where: { id: runId },
     include: { payslips: { include: { employee: true } } },
   });
@@ -312,6 +314,10 @@ export async function validateRunForFinalize(runId: string): Promise<FinalizeIss
   return issues;
 }
 
+export async function validateRunForFinalize(runId: string): Promise<FinalizeIssue[]> {
+  return validateRunForFinalizeWithDb(prisma, runId);
+}
+
 /**
  * Locks the run, then renders the PDFs.
  *
@@ -334,23 +340,41 @@ export async function finalizePayrollRun(runId: string) {
   const config = await loadRateConfig();
   const now = new Date();
 
-  const run = await prisma.payrollRun.update({
-    where: { id: runId },
-    data: {
-      status: "FINALIZED",
-      finalizedAt: now,
-      issuedOn: now,
-      rateSnapshot: config as unknown as Prisma.InputJsonValue,
-    },
-    include: { payslips: { select: { id: true } } },
+  const lockResult = await prisma.$transaction(async (tx) => {
+    const txIssues = await validateRunForFinalizeWithDb(tx, runId);
+    if (txIssues.length > 0) {
+      return { ok: false as const, issues: txIssues };
+    }
+
+    const updated = await tx.payrollRun.updateMany({
+      where: { id: runId, status: "DRAFT" },
+      data: {
+        status: "FINALIZED",
+        finalizedAt: now,
+        issuedOn: now,
+        rateSnapshot: config as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    if (updated.count === 0) {
+      return {
+        ok: false as const,
+        issues: [{ payslipId: "", employeeName: "", message: "This run has already been finalized." }],
+      };
+    }
+
+    const payslips = await tx.payslip.findMany({ where: { runId }, select: { id: true } });
+    return { ok: true as const, payslipIds: payslips.map((payslip) => payslip.id) };
   });
+
+  if (!lockResult.ok) return lockResult;
 
   let rendered = 0;
   let failed = 0;
 
-  for (const payslip of run.payslips) {
+  for (const payslipId of lockResult.payslipIds) {
     try {
-      await renderAndStorePayslipPdf(payslip.id);
+      await renderAndStorePayslipPdf(payslipId);
       rendered++;
     } catch {
       failed++;
