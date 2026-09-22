@@ -205,6 +205,22 @@ export async function generatePayrollRun(year: number, month: number) {
   const config = await loadRateConfig();
   const employees = await employeesForMonth(year, month);
 
+  const draftGuard = await prisma.payrollRun.updateMany({
+    where: { id: run.id, status: "DRAFT" },
+    data: { updatedAt: new Date() },
+  });
+  if (draftGuard.count === 0) {
+    throw new Error("This payroll run has been finalized and cannot be regenerated.");
+  }
+
+  const eligibleIds = employees.map((employee) => employee.id);
+  await prisma.payslip.deleteMany({
+    where: {
+      runId: run.id,
+      ...(eligibleIds.length > 0 ? { employeeId: { notIn: eligibleIds } } : {}),
+    },
+  });
+
   for (const employee of employees) {
     await draftPayslip({ runId: run.id, employee, config, year, month });
   }
@@ -233,8 +249,11 @@ export async function recomputePayslip(payslipId: string): Promise<void> {
     config,
   });
 
-  await prisma.payslip.update({
-    where: { id: payslipId },
+  const updated = await prisma.payslip.updateMany({
+    where: { id: payslipId, run: { status: "DRAFT" } },
     data: payslipMoneyFields(computed),
   });
+  if (updated.count === 0) {
+    throw new Error("This payslip belongs to a finalized run and cannot be recomputed.");
+  }
 }
