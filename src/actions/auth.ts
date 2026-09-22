@@ -91,7 +91,7 @@ export async function registerVendor(_prevState: FormState, formData: FormData):
     });
   });
 
-  await createSession({ userId: vendor.userId, role: "VENDOR", vendorId: vendor.id });
+  await createSession({ userId: vendor.userId, role: "VENDOR", vendorId: vendor.id, employeeId: null });
   redirect("/vendor");
 }
 
@@ -104,16 +104,21 @@ export async function loginUser(_prevState: FormState, formData: FormData): Prom
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email.toLowerCase() },
-    include: { vendor: true },
+    include: { vendor: true, employee: true },
   });
 
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
     return { error: "Invalid email or password." };
   }
 
-  await createSession({ userId: user.id, role: user.role, vendorId: user.vendor?.id ?? null });
+  await createSession({
+    userId: user.id,
+    role: user.role,
+    vendorId: user.vendor?.id ?? null,
+    employeeId: user.employee?.id ?? null,
+  });
 
-  redirect(user.role === "ADMIN" ? "/admin" : "/vendor");
+  redirect(user.role === "ADMIN" ? "/admin" : user.role === "STAFF" ? "/staff" : "/vendor");
 }
 
 export async function logoutUser() {
