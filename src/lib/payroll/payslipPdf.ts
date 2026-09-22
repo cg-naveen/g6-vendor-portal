@@ -5,6 +5,7 @@ import { getOrgSettings } from "@/lib/orgSettings";
 import { getPayrollSettings } from "@/lib/payrollSettings";
 import { readUploadedFile } from "@/lib/storage";
 import type { PayslipAmountRow, PayslipPdfData } from "@/lib/pdf/types";
+import { splitEmployerAddress } from "@/lib/payroll/addressLines";
 
 const money = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const monthYear = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -77,7 +78,7 @@ export async function buildPayslipPdfData(payslipId: string): Promise<PayslipPdf
 
   return {
     employerName: org.companyName,
-    employerAddressLines: (org.address ?? "").split("\n").map((line) => line.trim()).filter(Boolean),
+    employerAddressLines: splitEmployerAddress(org.address),
     businessRegNumber: settings.businessRegNumber,
 
     periodLabel: `Payslip for ${monthYear.format(periodStart)}`,

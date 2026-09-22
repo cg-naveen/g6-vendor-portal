@@ -4,6 +4,7 @@ import { getOrgSettings } from "@/lib/orgSettings";
 import { getPayrollSettings } from "@/lib/payrollSettings";
 import { renderPayslipPdf } from "@/lib/pdf/render";
 import type { PayslipPdfData } from "@/lib/pdf/types";
+import { splitEmployerAddress } from "@/lib/payroll/addressLines";
 import { getSession } from "@/lib/session";
 import { readUploadedFile } from "@/lib/storage";
 
@@ -56,10 +57,7 @@ export async function GET(req: NextRequest) {
 
   const data: PayslipPdfData = {
     employerName: org.companyName || "Your Company Name",
-    employerAddressLines: (org.address ?? "Your company address")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean),
+    employerAddressLines: splitEmployerAddress(org.address ?? "Your company address"),
     businessRegNumber: settings.businessRegNumber,
 
     periodLabel: `Payslip for ${monthYear.format(periodStart)}`,

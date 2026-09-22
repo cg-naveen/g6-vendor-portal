@@ -5,10 +5,12 @@ const styles = StyleSheet.create({
   page: { paddingTop: 44, paddingBottom: 64, paddingHorizontal: 44, fontSize: 9, fontFamily: "Helvetica", color: "#18181b" },
 
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  // Constrain width so long address lines wrap instead of overlapping the period block.
+  headerLeft: { flexGrow: 1, flexShrink: 1, paddingRight: 16, maxWidth: "58%" },
   logo: { width: 54, height: 54, objectFit: "contain", marginBottom: 8 },
   employerName: { fontSize: 14, fontWeight: 700 },
   employerLine: { fontSize: 8, color: "#52525b", marginTop: 2 },
-  headerRight: { textAlign: "right" },
+  headerRight: { flexShrink: 0, maxWidth: "40%", textAlign: "right" },
   periodLabel: { fontSize: 10, fontWeight: 700 },
   issuedLabel: { fontSize: 8, color: "#52525b", marginTop: 2 },
 
@@ -122,7 +124,7 @@ export function PayslipClassic({ data }: { data: PayslipPdfData }) {
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerLeft}>
             {data.logoDataUri ? <Image src={data.logoDataUri} style={styles.logo} /> : null}
             <Text style={[styles.employerName, { color: data.accentColor }]}>{data.employerName}</Text>
             {data.employerAddressLines.map((line, index) => (
