@@ -31,3 +31,16 @@ export function statusBadgeVariant(status: string): keyof typeof VARIANTS {
       return "draft";
   }
 }
+
+export function employeeStatusVariant(status: string): keyof typeof VARIANTS {
+  switch (status) {
+    case "ACTIVE":
+      return "paid";
+    case "RESIGNED":
+      return "draft";
+    case "TERMINATED":
+      return "overdue";
+    default:
+      return "draft";
+  }
+}
