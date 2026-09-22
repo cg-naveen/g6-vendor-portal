@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDisplayDate } from "@/lib/billingDates";
 import { formatMoney } from "@/lib/stats";
 import { FinalizeRunForm } from "./FinalizeRunForm";
+import { DeleteDraftRunForm, RefreshDraftRunForm } from "./DraftRunActions";
 import { MarkRunPaidForm } from "./MarkRunPaidForm";
 import { PcbInlineInput } from "./PcbInlineInput";
 import { RegeneratePdfsButton } from "./RegeneratePdfsButton";
@@ -64,6 +65,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <h1 className="g6-page-title">{`Payroll — ${monthName} ${run.year}`}</h1>
         <Badge variant={run.status === "FINALIZED" ? "paid" : "draft"}>{run.status}</Badge>
       </div>
+
+      {isDraft ? (
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <RefreshDraftRunForm runId={run.id} />
+          <DeleteDraftRunForm runId={run.id} periodLabel={`${monthName} ${run.year}`} />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard label="Total gross" value={formatMoney(totals.gross)} />
@@ -155,7 +163,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             {run.payslips.length === 0 ? (
               <tr>
                 <td colSpan={10} className="py-8 text-center text-[#5c5770]">
-                  No payslips in this run.
+                  <p>No payslips in this run.</p>
+                  <p className="mx-auto mt-2 max-w-lg text-[12px] leading-relaxed">
+                    Staff are included only when their hire date falls on or before the last day of
+                    this month (and they have not already left before the month starts). Use{" "}
+                    <span className="text-[#a09bb5]">Refresh payslips from staff list</span> after
+                    adding or correcting staff, or delete this draft and generate a different month.
+                  </p>
                 </td>
               </tr>
             ) : null}

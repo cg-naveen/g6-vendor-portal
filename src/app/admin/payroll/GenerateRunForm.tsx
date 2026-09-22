@@ -24,7 +24,10 @@ const initialState: FormState = {};
 export function GenerateRunForm() {
   const [state, formAction, pending] = useActionState(generateRunAction, initialState);
   const now = new Date();
-  const previousMonth = now.getUTCMonth() === 0 ? 12 : now.getUTCMonth();
+  // Default to the previous calendar month in UTC (typical payroll cycle).
+  const previousMonthIndex = now.getUTCMonth() === 0 ? 11 : now.getUTCMonth() - 1;
+  const previousMonth = previousMonthIndex + 1;
+  const previousYear = now.getUTCMonth() === 0 ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
 
   return (
     <form action={formAction} className="flex flex-wrap items-end justify-end gap-2">
@@ -45,7 +48,7 @@ export function GenerateRunForm() {
           type="number"
           min="2000"
           max="2100"
-          defaultValue={now.getUTCFullYear()}
+          defaultValue={previousYear}
           className="g6-input w-28"
           disabled={pending}
         />

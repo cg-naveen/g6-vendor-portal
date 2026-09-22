@@ -6,6 +6,7 @@ import { z } from "zod";
 import { parseDateInput } from "@/lib/billingDates";
 import { requireAdmin } from "@/lib/currentUser";
 import {
+  deleteDraftPayrollRun,
   finalizePayrollRun,
   generatePayrollRun,
   recomputePayslip,
@@ -252,4 +253,46 @@ export async function markRunPaidAction(_prevState: FormState, formData: FormDat
   revalidatePath("/admin/payroll");
   revalidatePath("/staff/payslips");
   return { success: true };
+}
+
+/** Deletes a DRAFT run entirely so the month can be generated again. */
+export async function deleteDraftRunAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  try {
+    await deleteDraftPayrollRun(runId);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not delete the run." };
+  }
+
+  revalidatePath("/admin/payroll");
+  redirect("/admin/payroll");
+}
+
+/** Re-runs generation for an existing draft month (picks up new staff / salary). */
+export async function refreshDraftRunAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  const run = await prisma.payrollRun.findUnique({ where: { id: runId } });
+  if (!run) return { error: "Payroll run not found." };
+  if (run.status !== "DRAFT") return { error: FINALIZED_ERROR };
+
+  let drafted: number;
+  try {
+    ({ drafted } = await generatePayrollRun(run.year, run.month));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not refresh the run." };
+  }
+
+  revalidatePath(`/admin/payroll/${runId}`);
+  revalidatePath("/admin/payroll");
+  return {
+    success: true,
+    message:
+      drafted === 0
+        ? "No eligible staff for this month. Check hire dates and salary records."
+        : `Refreshed ${drafted} payslip(s) for this month.`,
+  };
 }

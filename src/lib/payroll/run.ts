@@ -239,6 +239,19 @@ export async function generatePayrollRun(year: number, month: number) {
 }
 
 /**
+ * Permanently removes a DRAFT payroll run (and its payslips via cascade) so the
+ * month can be generated again from scratch. Finalized runs cannot be deleted.
+ */
+export async function deleteDraftPayrollRun(runId: string): Promise<void> {
+  const result = await prisma.payrollRun.deleteMany({
+    where: { id: runId, status: "DRAFT" },
+  });
+  if (result.count === 0) {
+    throw new Error("Only draft payroll runs can be deleted. Finalized runs are locked.");
+  }
+}
+
+/**
  * Recomputes one draft payslip from its current lines and PCB. Called after an
  * admin edits lines or enters PCB, so the stored figures never lag the lines.
  */
