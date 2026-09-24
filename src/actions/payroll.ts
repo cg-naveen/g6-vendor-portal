@@ -1,0 +1,298 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { parseDateInput } from "@/lib/billingDates";
+import { requireAdmin } from "@/lib/currentUser";
+import {
+  deleteDraftPayrollRun,
+  finalizePayrollRun,
+  generatePayrollRun,
+  recomputePayslip,
+  regenerateMissingPayslipPdfs,
+  type FinalizeIssue,
+} from "@/lib/payroll/run";
+import { prisma } from "@/lib/prisma";
+
+export type FormState = {
+  error?: string;
+  success?: boolean;
+  message?: string;
+  fieldErrors?: Record<string, string>;
+};
+
+export type PayrollFormState = FormState & { issues?: FinalizeIssue[] };
+
+const FINALIZED_ERROR = "This run has been finalized and can no longer be edited.";
+
+export async function generateRunAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+
+  const parsed = z
+    .object({
+      year: z.coerce.number().int().min(2000).max(2100),
+      month: z.coerce.number().int().min(1).max(12),
+    })
+    .safeParse({ year: formData.get("year"), month: formData.get("month") });
+
+  if (!parsed.success) return { error: "Pick a valid month and year." };
+
+  let runId: string;
+  try {
+    ({ runId } = await generatePayrollRun(parsed.data.year, parsed.data.month));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not generate the run." };
+  }
+
+  revalidatePath("/admin/payroll");
+  redirect(`/admin/payroll/${runId}`);
+}
+
+/**
+ * Sets PCB for one payslip and recomputes it.
+ *
+ * An empty string clears it back to NULL ("not entered"), which is distinct
+ * from 0.00 ("confirmed none due") — finalize blocks on the former only.
+ */
+export async function setPayslipPcbAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const payslipId = String(formData.get("payslipId") ?? "");
+  const raw = String(formData.get("pcb") ?? "").trim();
+
+  if (raw !== "") {
+    const value = Number(raw);
+    if (Number.isNaN(value) || value < 0) {
+      return { error: "PCB must be zero or greater.", fieldErrors: { pcb: "Enter a valid amount" } };
+    }
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const payslip = await tx.payslip.findUniqueOrThrow({
+        where: { id: payslipId },
+        select: { runId: true },
+      });
+      const draftGuard = await tx.payrollRun.updateMany({
+        where: { id: payslip.runId, status: "DRAFT" },
+        data: { updatedAt: new Date() },
+      });
+      if (draftGuard.count === 0) return { editable: false as const, runId: payslip.runId };
+
+      await tx.payslip.update({
+        where: { id: payslipId },
+        data: { pcb: raw === "" ? null : Number(raw) },
+      });
+      await recomputePayslip(payslipId, tx);
+      return { editable: true as const, runId: payslip.runId };
+    });
+
+    if (!result.editable) return { error: FINALIZED_ERROR };
+
+    revalidatePath(`/admin/payroll/${result.runId}`);
+    return { success: true };
+  } catch {
+    return { error: "Could not save PCB. Try again." };
+  }
+}
+
+const lineSchema = z.object({
+  kind: z.enum(["EARNING", "WAGE_DEDUCTION", "NET_DEDUCTION"]),
+  label: z.string().trim().min(1, "Every line needs a label"),
+  units: z.string().trim().optional(),
+  rate: z.string().trim().optional(),
+  amount: z.coerce.number().positive("Every line needs an amount greater than 0"),
+  taxable: z.boolean(),
+  epfApplicable: z.boolean(),
+  socsoApplicable: z.boolean(),
+});
+
+/**
+ * Replaces the non-auto lines on a draft payslip, then recomputes.
+ *
+ * The auto salary line is untouched: it is derived from the salary timeline and
+ * the month, and editing it here would put the payslip out of step with the
+ * SalaryRecord it came from. A correction to pay belongs in a new line (an
+ * arrears earning, or an unpaid-leave wage deduction).
+ */
+export async function updatePayslipLinesAction(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+  const payslipId = String(formData.get("payslipId") ?? "");
+
+  let rows: unknown;
+  try {
+    rows = JSON.parse(String(formData.get("rows") ?? "[]"));
+  } catch {
+    return { error: "Invalid payslip lines." };
+  }
+
+  const parsed = z.array(lineSchema).safeParse(rows);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Please check the payslip lines." };
+  }
+
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const payslip = await tx.payslip.findUniqueOrThrow({
+      where: { id: payslipId },
+      select: { runId: true },
+    });
+    const draftGuard = await tx.payrollRun.updateMany({
+      where: { id: payslip.runId, status: "DRAFT" },
+      data: { updatedAt: new Date() },
+    });
+    if (draftGuard.count === 0) return { editable: false as const, runId: payslip.runId };
+
+    await tx.payslipLine.deleteMany({ where: { payslipId, autoGenerated: false } });
+    await tx.payslip.update({
+      where: { id: payslipId },
+      data: {
+        notes: notes || null,
+        lines: {
+          create: parsed.data.map((line, index) => ({
+            kind: line.kind,
+            label: line.label,
+            units: line.units ? Number(line.units) : null,
+            rate: line.rate ? Number(line.rate) : null,
+            amount: line.amount,
+            taxable: line.taxable,
+            epfApplicable: line.epfApplicable,
+            socsoApplicable: line.socsoApplicable,
+            autoGenerated: false,
+            // sortOrder 0 belongs to the auto salary line.
+            sortOrder: index + 1,
+          })),
+        },
+      },
+    });
+    await recomputePayslip(payslipId, tx);
+    return { editable: true as const, runId: payslip.runId };
+  });
+
+  if (!result.editable) return { error: FINALIZED_ERROR };
+
+  revalidatePath(`/admin/payroll/${result.runId}`);
+  redirect(`/admin/payroll/${result.runId}`);
+}
+
+/**
+ * Finalizes a run. Returns validation issues in state rather than throwing, so
+ * the page can list exactly which payslips are blocking and why.
+ */
+export async function finalizeRunAction(
+  _prevState: PayrollFormState,
+  formData: FormData
+): Promise<PayrollFormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  const result = await finalizePayrollRun(runId);
+  revalidatePath(`/admin/payroll/${runId}`);
+  revalidatePath("/admin/payroll");
+
+  if (!result.ok) {
+    return { error: "This run cannot be finalized yet.", issues: result.issues };
+  }
+
+  return {
+    success: true,
+    message:
+      result.failed === 0
+        ? `Run finalized. ${result.rendered} payslip(s) issued.`
+        : `Run finalized and locked, but ${result.failed} PDF(s) failed to render. Use "Regenerate missing PDFs".`,
+  };
+}
+
+export async function regeneratePdfsAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  const repaired = await regenerateMissingPayslipPdfs(runId);
+  revalidatePath(`/admin/payroll/${runId}`);
+
+  return {
+    success: true,
+    message: repaired === 0 ? "No payslips were missing a PDF." : `Regenerated ${repaired} PDF(s).`,
+  };
+}
+
+export async function markRunPaidAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  const parsed = z
+    .object({
+      paidAt: z.string().trim().min(1, "Payment date is required"),
+      paymentReference: z.string().trim().optional(),
+    })
+    .safeParse({ paidAt: formData.get("paidAt"), paymentReference: formData.get("paymentReference") });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Enter a payment date." };
+  }
+
+  const run = await prisma.payrollRun.findUniqueOrThrow({ where: { id: runId } });
+  if (run.status !== "FINALIZED") {
+    return { error: "Finalize the run before marking it paid." };
+  }
+
+  await prisma.payrollRun.update({
+    where: { id: runId },
+    data: {
+      paymentStatus: "PAID",
+      paidAt: parseDateInput(parsed.data.paidAt),
+      paymentReference: parsed.data.paymentReference || null,
+    },
+  });
+
+  revalidatePath(`/admin/payroll/${runId}`);
+  revalidatePath("/admin/payroll");
+  revalidatePath("/staff/payslips");
+  return { success: true };
+}
+
+/** Deletes a DRAFT run entirely so the month can be generated again. */
+export async function deleteDraftRunAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  try {
+    await deleteDraftPayrollRun(runId);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not delete the run." };
+  }
+
+  revalidatePath("/admin/payroll");
+  redirect("/admin/payroll");
+}
+
+/** Re-runs generation for an existing draft month (picks up new staff / salary). */
+export async function refreshDraftRunAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const runId = String(formData.get("runId") ?? "");
+
+  const run = await prisma.payrollRun.findUnique({ where: { id: runId } });
+  if (!run) return { error: "Payroll run not found." };
+  if (run.status !== "DRAFT") return { error: FINALIZED_ERROR };
+
+  let drafted: number;
+  try {
+    ({ drafted } = await generatePayrollRun(run.year, run.month));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not refresh the run." };
+  }
+
+  revalidatePath(`/admin/payroll/${runId}`);
+  revalidatePath("/admin/payroll");
+  return {
+    success: true,
+    message:
+      drafted === 0
+        ? "No eligible staff for this month. Check hire dates and salary records."
+        : `Refreshed ${drafted} payslip(s) for this month.`,
+  };
+}

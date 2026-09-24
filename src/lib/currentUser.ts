@@ -26,3 +26,15 @@ export async function requireAdmin() {
   }
   return user;
 }
+
+export async function requireStaff() {
+  const session = await getSession();
+  if (!session || session.role !== "STAFF" || !session.employeeId) {
+    redirect("/login");
+  }
+  const employee = await prisma.employee.findUnique({ where: { id: session.employeeId } });
+  if (!employee) {
+    redirect("/login");
+  }
+  return employee;
+}

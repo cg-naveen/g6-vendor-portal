@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   ADMIN
   VENDOR
+  STAFF
 }
 
 enum VendorType {
@@ -53,6 +54,41 @@ enum PaymentStatus {
   PAID
 }
 
+enum EmploymentStatus {
+  ACTIVE
+  RESIGNED
+  TERMINATED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  FINALIZED
+}
+
+/// EARNING adds to gross; the three per-line flags select which bases it feeds.
+/// WAGE_DEDUCTION reduces gross and each flagged base (unpaid leave).
+/// NET_DEDUCTION reduces net only, after contributions (advance recovery, loan).
+/// The distinction matters: treating a loan repayment as a wage reduction would
+/// lower the EPF and SOCSO bases and under-remit.
+enum PayslipLineKind {
+  EARNING
+  WAGE_DEDUCTION
+  NET_DEDUCTION
+}
+
+enum StatutoryBandType {
+  SOCSO
+  EIS
+}
+
+/// GENERATED rows come from the rates in PayrollSettings; MANUAL rows have been
+/// edited or imported by an admin. Regeneration rewrites GENERATED rows only, so
+/// a hand-corrected band is never silently clobbered.
+enum StatutoryBandSource {
+  GENERATED
+  MANUAL
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -62,6 +98,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   vendor      Vendor?
+  employee    Employee?
   resetTokens PasswordResetToken[]
 }
 
@@ -230,4 +267,260 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+model Employee {
+  id           String @id @default(cuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeCode String @unique
+
+  fullName    String
+  designation String
+  department  String?
+  nationality String?
+  gender      String?
+
+  // Statutory identifiers, printed on the payslip
+  nricOrPassport String
+  epfNumber      String?
+  socsoNumber    String?
+  pcbNumber      String?
+
+  email String
+  phone String
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  postcode     String?
+  state        String?
+  country      String?
+
+  bankName          String
+  accountNumber     String
+  accountHolderName String?
+
+  status  EmploymentStatus @default(ACTIVE)
+  hiredOn DateTime
+  endedOn DateTime?
+
+  // Statutory applicability
+  epfEnabled   Boolean @default(true)
+  socsoEnabled Boolean @default(true)
+  eisEnabled   Boolean @default(true)
+
+  // Some employees elect an above-statutory EPF rate
+  epfEmployeeRateOverride Decimal? @db.Decimal(5, 2)
+  epfEmployerRateOverride Decimal? @db.Decimal(5, 2)
+
+  monthlyZakat Decimal? @db.Decimal(14, 2)
+
+  /// PCB profile. These fields compute NOTHING — PCB is hand-entered per month.
+  /// They exist to print footnote 2 on the payslip and to record which profile
+  /// the admin looked the figure up against.
+  taxResident       Boolean @default(true)
+  taxWorkerCategory String? @default("Normal Worker")
+  taxMaritalStatus  String?
+  taxDependents     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salaryRecords SalaryRecord[]
+  payslips      Payslip[]
+
+  @@index([status])
+}
+
+/// Salary is an effective-dated timeline, not a mutable column on Employee, so
+/// there is no "current salary disagrees with the history log" failure mode.
+/// Salary for month M is the latest record with effectiveFrom <= start of M.
+model SalaryRecord {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  monthlySalary Decimal  @db.Decimal(14, 2)
+  effectiveFrom DateTime
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  @@index([employeeId, effectiveFrom])
+}
+
+model PayrollRun {
+  id     String           @id @default(cuid())
+  year   Int
+  month  Int
+  status PayrollRunStatus @default(DRAFT)
+
+  issuedOn    DateTime?
+  finalizedAt DateTime?
+
+  paymentStatus    PaymentStatus @default(UNPAID)
+  paidAt           DateTime?
+  paymentReference String?
+
+  /// The RateConfig actually used, frozen at finalize. This is what makes a
+  /// finalized payslip immune to later rate changes.
+  rateSnapshot Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payslips Payslip[]
+
+  @@unique([year, month])
+}
+
+model Payslip {
+  id         String     @id @default(cuid())
+  runId      String
+  run        PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  payslipNumber String @unique
+
+  /// Employee facts are copied here deliberately: if someone is promoted in
+  /// June, May's payslip must still show their May designation.
+  employeeName   String
+  designation    String
+  department     String?
+  nationality    String?
+  gender         String?
+  nricOrPassport String
+  epfNumber      String?
+  socsoNumber    String?
+  pcbNumber      String?
+
+  grossPay   Decimal @db.Decimal(14, 2)
+  taxablePay Decimal @db.Decimal(14, 2)
+  epfBase    Decimal @db.Decimal(14, 2)
+  socsoBase  Decimal @db.Decimal(14, 2)
+
+  epfEmployee   Decimal  @default(0) @db.Decimal(14, 2)
+  epfEmployer   Decimal  @default(0) @db.Decimal(14, 2)
+  socsoEmployee Decimal  @default(0) @db.Decimal(14, 2)
+  socsoEmployer Decimal  @default(0) @db.Decimal(14, 2)
+  eisEmployee   Decimal  @default(0) @db.Decimal(14, 2)
+  eisEmployer   Decimal  @default(0) @db.Decimal(14, 2)
+  zakat         Decimal  @default(0) @db.Decimal(14, 2)
+  /// Nullable on purpose: NULL means "the admin has not entered it yet", while
+  /// 0.00 means "confirmed as zero". Finalize refuses to issue a payslip whose
+  /// PCB is still NULL, which a @default(0) column could not express.
+  pcb           Decimal? @db.Decimal(14, 2)
+  hrdfEmployer  Decimal  @default(0) @db.Decimal(14, 2)
+
+  totalEmployeeDeductions Decimal @db.Decimal(14, 2)
+  totalEmployerCost       Decimal @db.Decimal(14, 2)
+  netPay                  Decimal @db.Decimal(14, 2)
+
+  proratedDays Int?
+  daysInMonth  Int?
+
+  pdfPath String?
+  notes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines PayslipLine[]
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
+}
+
+/// Basic salary is itself an auto-created EARNING line, so earnings have exactly
+/// one representation rather than a column plus a list.
+model PayslipLine {
+  id        String  @id @default(cuid())
+  payslipId String
+  payslip   Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  kind   PayslipLineKind
+  label  String
+  units  Decimal?        @db.Decimal(10, 2)
+  rate   Decimal?        @db.Decimal(14, 2)
+  amount Decimal         @db.Decimal(14, 2)
+
+  taxable         Boolean @default(true)
+  epfApplicable   Boolean @default(true)
+  socsoApplicable Boolean @default(true)
+
+  /// True for the salary line the generator creates. Re-generating a draft run
+  /// replaces only auto-generated lines, so an admin's hand-added allowance or
+  /// loan deduction survives a refresh.
+  autoGenerated Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  @@index([payslipId])
+}
+
+/// A band covers wages in the half-open interval (wageFrom, wageTo].
+model StatutoryBand {
+  id             String              @id @default(cuid())
+  type           StatutoryBandType
+  wageFrom       Decimal             @db.Decimal(14, 2)
+  wageTo         Decimal             @db.Decimal(14, 2)
+  employeeAmount Decimal             @db.Decimal(14, 2)
+  employerAmount Decimal             @db.Decimal(14, 2)
+  source         StatutoryBandSource @default(GENERATED)
+
+  @@unique([type, wageFrom])
+  @@index([type])
+}
+
+model PayrollSettings {
+  id String @id @default("singleton")
+
+  employeeCodePrefix String @default("G6-EMP-")
+
+  // Employer statutory identifiers. Company name and address come from
+  // OrgSettings — the employing entity is the same one that appears as Bill To
+  // on vendor invoices, so there is no duplicate address to drift.
+  businessRegNumber   String?
+  epfEmployerNumber   String?
+  socsoEmployerNumber String?
+  lhdnEmployerNumber  String?
+
+  // EPF / KWSP — applied directly to the EPF base.
+  // The employer rate is 13% AT OR BELOW the threshold and 12% above it.
+  epfEmployeeRate               Decimal @default(11.00) @db.Decimal(5, 2)
+  epfEmployerRate               Decimal @default(12.00) @db.Decimal(5, 2)
+  epfEmployerRateBelowThreshold Decimal @default(13.00) @db.Decimal(5, 2)
+  epfEmployerThreshold          Decimal @default(5000.00) @db.Decimal(14, 2)
+
+  // SOCSO — these rates GENERATE the band table; they are never applied to
+  // salary directly. 0.5% of 5300 is 26.50, but the statutory figure is 26.25.
+  socsoEmployeeRate Decimal @default(0.500) @db.Decimal(5, 3)
+  socsoEmployerRate Decimal @default(1.750) @db.Decimal(5, 3)
+  socsoWageCeiling  Decimal @default(6000.00) @db.Decimal(14, 2)
+  socsoBandWidth    Decimal @default(100.00) @db.Decimal(14, 2)
+
+  // EIS — same generation mechanism
+  eisEmployeeRate Decimal @default(0.200) @db.Decimal(5, 3)
+  eisEmployerRate Decimal @default(0.200) @db.Decimal(5, 3)
+  eisWageCeiling  Decimal @default(6000.00) @db.Decimal(14, 2)
+  eisBandWidth    Decimal @default(100.00) @db.Decimal(14, 2)
+
+  // HRDF — an employer-only levy on gross
+  hrdfEnabled Boolean @default(false)
+  hrdfRate    Decimal @default(1.00) @db.Decimal(5, 2)
+
+  // Payslip design
+  payslipLogoUrl            String?
+  accentColor               String  @default("#18181b")
+  showEmployerContributions Boolean @default(true)
+  showHrdfColumn            Boolean @default(false)
+  showZakatColumn           Boolean @default(true)
+  epfFootnote               String?
+  payslipFooterText         String?
+
+  bandsGeneratedAt DateTime?
+  bandsVerifiedAt  DateTime?
+  bandsVerifiedBy  String?
+
+  updatedAt DateTime @updatedAt
 }

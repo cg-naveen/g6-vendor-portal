@@ -1,0 +1,181 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/Badge";
+import { StatCard } from "@/components/StatCard";
+import { requireAdmin } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
+import { formatDisplayDate } from "@/lib/billingDates";
+import { formatMoney } from "@/lib/stats";
+import { FinalizeRunForm } from "./FinalizeRunForm";
+import { DeleteDraftRunForm, RefreshDraftRunForm } from "./DraftRunActions";
+import { MarkRunPaidForm } from "./MarkRunPaidForm";
+import { PayslipPdfLink } from "./PayslipPdfLink";
+import { PcbInlineInput } from "./PcbInlineInput";
+import { RegeneratePdfsButton } from "./RegeneratePdfsButton";
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+export default async function PayrollRunPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
+  const { id } = await params;
+  const run = await prisma.payrollRun.findUnique({
+    where: { id },
+    include: {
+      payslips: {
+        include: { employee: { select: { employeeCode: true } }, lines: true },
+        orderBy: { payslipNumber: "asc" },
+      },
+    },
+  });
+  if (!run) notFound();
+
+  const totals = run.payslips.reduce(
+    (acc, payslip) => ({
+      gross: acc.gross + Number(payslip.grossPay),
+      net: acc.net + Number(payslip.netPay),
+      employerCost: acc.employerCost + Number(payslip.totalEmployerCost),
+    }),
+    { gross: 0, net: 0, employerCost: 0 }
+  );
+  const isDraft = run.status === "DRAFT";
+  const missingPdfs = run.payslips.filter((payslip) => !payslip.pdfPath).length;
+  const monthName = MONTH_NAMES[run.month - 1] ?? String(run.month);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="g6-page-title">{`Payroll — ${monthName} ${run.year}`}</h1>
+        <Badge variant={run.status === "FINALIZED" ? "paid" : "draft"}>{run.status}</Badge>
+      </div>
+
+      {isDraft ? (
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <RefreshDraftRunForm runId={run.id} />
+          <DeleteDraftRunForm runId={run.id} periodLabel={`${monthName} ${run.year}`} />
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard label="Total gross" value={formatMoney(totals.gross)} />
+        <StatCard label="Total net pay" value={formatMoney(totals.net)} />
+        <StatCard label="Total employer cost" value={formatMoney(totals.employerCost)} />
+      </div>
+
+      <div className="g6-table-wrap">
+        <table className="g6-table">
+          <thead>
+            <tr>
+              <th>Payslip #</th>
+              <th>Employee</th>
+              <th>Days</th>
+              <th className="text-right">Gross</th>
+              <th className="text-right">EPF</th>
+              <th className="text-right">SOCSO</th>
+              <th className="text-right">EIS</th>
+              <th className="text-right">PCB</th>
+              <th className="text-right">Net</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {run.payslips.map((payslip) => (
+              <tr key={payslip.id}>
+                <td className="font-mono-g6">{payslip.payslipNumber}</td>
+                <td>
+                  <div className="font-medium">{payslip.employeeName}</div>
+                  <div className="font-mono-g6 text-xs text-[#8781a0]">{payslip.employee.employeeCode}</div>
+                </td>
+                <td>
+                  {payslip.proratedDays === payslip.daysInMonth
+                    ? "Full"
+                    : `${payslip.proratedDays}/${payslip.daysInMonth}`}
+                </td>
+                <td className="text-right font-mono-g6">{formatMoney(Number(payslip.grossPay))}</td>
+                <td className="text-right font-mono-g6">{formatMoney(Number(payslip.epfEmployee))}</td>
+                <td className="text-right font-mono-g6">{formatMoney(Number(payslip.socsoEmployee))}</td>
+                <td className="text-right font-mono-g6">{formatMoney(Number(payslip.eisEmployee))}</td>
+                <td className="text-right font-mono-g6">
+                  {isDraft ? (
+                    <PcbInlineInput
+                      payslipId={payslip.id}
+                      value={payslip.pcb === null ? null : Number(payslip.pcb)}
+                    />
+                  ) : (
+                    formatMoney(Number(payslip.pcb))
+                  )}
+                </td>
+                <td
+                  className={`text-right font-mono-g6 ${Number(payslip.netPay) < 0 ? "text-[#ff9494]" : ""}`}
+                >
+                  {formatMoney(Number(payslip.netPay))}
+                </td>
+                <td className="text-right">
+                  {isDraft ? (
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      <PayslipPdfLink payslipId={payslip.id}>Preview</PayslipPdfLink>
+                      <Link
+                        href={`/admin/payroll/${run.id}/payslips/${payslip.id}/edit`}
+                        className="text-[#9d84ff] hover:text-[#cabfff]"
+                      >
+                        Edit lines
+                      </Link>
+                    </div>
+                  ) : payslip.pdfPath ? (
+                    <PayslipPdfLink payslipId={payslip.id}>PDF</PayslipPdfLink>
+                  ) : (
+                    <span className="text-[#ff9494]">PDF missing</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {run.payslips.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="py-8 text-center text-[#5c5770]">
+                  <p>No payslips in this run.</p>
+                  <p className="mx-auto mt-2 max-w-lg text-[12px] leading-relaxed">
+                    Staff are included only when their hire date falls on or before the last day of
+                    this month (and they have not already left before the month starts). Use{" "}
+                    <span className="text-[#a09bb5]">Refresh payslips from staff list</span> after
+                    adding or correcting staff, or delete this draft and generate a different month.
+                  </p>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      {isDraft ? (
+        <FinalizeRunForm runId={run.id} />
+      ) : missingPdfs > 0 ? (
+        <RegeneratePdfsButton runId={run.id} missing={missingPdfs} />
+      ) : null}
+
+      {run.status === "FINALIZED" && run.paymentStatus === "UNPAID" ? (
+        <MarkRunPaidForm runId={run.id} />
+      ) : null}
+
+      {run.paymentStatus === "PAID" ? (
+        <div className="g6-panel p-4">
+          <p className="text-[13px] font-semibold text-[#5ee8c0]">Paid on {formatDisplayDate(run.paidAt!)}</p>
+          {run.paymentReference ? (
+            <p className="mt-1 text-[12px] text-[#a09bb5]">Reference: {run.paymentReference}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}

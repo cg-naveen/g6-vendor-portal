@@ -9,12 +9,12 @@ function getSecretKey() {
   return new TextEncoder().encode(secret);
 }
 
-async function getRole(request: NextRequest): Promise<"ADMIN" | "VENDOR" | null> {
+async function getRole(request: NextRequest): Promise<"ADMIN" | "VENDOR" | "STAFF" | null> {
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
-    return payload.role as "ADMIN" | "VENDOR";
+    return payload.role as "ADMIN" | "VENDOR" | "STAFF";
   } catch {
     return null;
   }
@@ -43,9 +43,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/staff")) {
+    const role = await getRole(request);
+    if (role !== "STAFF") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/vendor/:path*"],
+  matcher: ["/admin/:path*", "/vendor/:path*", "/staff/:path*"],
 };
